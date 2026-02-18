@@ -17,7 +17,8 @@
     label { display: block; font-size: 0.9rem; margin-bottom: 0.4rem; color: rgba(255,255,255,0.8); }
     input { width: 100%; padding: 0.9rem 1rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.35); color: #fff; font-size: 1rem; }
     button { width: 100%; border: none; border-radius: 14px; padding: 0.9rem 1rem; margin-top: 1rem; font-weight: 600; background: linear-gradient(120deg, var(--accent), #4fd5ff); color: #050505; cursor: pointer; }
-    button:disabled { opacity: 0.6; cursor: progress; }
+    button.secondary { background: rgba(255,255,255,0.1); color: #fff; margin-top: 0.6rem; }
+    .hint { font-size: 0.85rem; color: #b5bfdc; margin-bottom: 1rem; }
     .error { color: #ff9f9f; font-size: 0.85rem; margin-top: 0.8rem; display: none; }
     .error.visible { display: block; }
   </style>
@@ -25,41 +26,43 @@
 <body>
   <div class="card">
     <p class="eyebrow">DropCharge</p>
-    <h1>Admin Login</h1>
+    <h1>Admin Token</h1>
+    <p class="hint">Gib dein einmaliges Admin-Token ein. Es wird nur lokal im Browser gespeichert.</p>
     <form id="login-form">
-      <label for="password">Passwort</label>
-      <input type="password" id="password" name="password" autocomplete="current-password" required />
-      <button type="submit">Anmelden</button>
-      <p class="error" id="error">Login fehlgeschlagen. Bitte erneut versuchen.</p>
+      <label for="token">Token</label>
+      <input type="password" id="token" name="token" autocomplete="off" required />
+      <button type="submit">Speichern & Dashboard öffnen</button>
+      <button type="button" class="secondary" id="clear-token">Token löschen</button>
+      <p class="error" id="error">Kein Token eingetragen.</p>
     </form>
   </div>
 
   <script>
+    const STORAGE_KEY = 'admin_token';
     const form = document.getElementById('login-form');
     const error = document.getElementById('error');
-    const passwordInput = document.getElementById('password');
+    const tokenInput = document.getElementById('token');
+    const clearBtn = document.getElementById('clear-token');
 
-    form.addEventListener('submit', async (event) => {
+    tokenInput.value = localStorage.getItem(STORAGE_KEY) || '';
+
+    form.addEventListener('submit', (event) => {
       event.preventDefault();
       error.classList.remove('visible');
-      const password = passwordInput.value.trim();
-      if (!password) return;
-      form.querySelector('button').disabled = true;
-      try {
-        const res = await fetch('/.netlify/functions/admin-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password })
-        });
-        if (!res.ok) throw new Error('Login failed');
-        window.location.href = '/admin';
-      } catch (err) {
+      const token = tokenInput.value.trim();
+      if (!token) {
+        error.textContent = 'Bitte Token eingeben.';
         error.classList.add('visible');
-      } finally {
-        form.querySelector('button').disabled = false;
-        passwordInput.value = '';
-        passwordInput.focus();
+        return;
       }
+      localStorage.setItem(STORAGE_KEY, token);
+      window.location.href = '/admin.html';
+    });
+
+    clearBtn.addEventListener('click', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      tokenInput.value = '';
+      tokenInput.focus();
     });
   </script>
 </body>

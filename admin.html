@@ -14,12 +14,13 @@
 <body class="admin">
   <header class="admin-hero">
     <div>
+      <p class="admin-banner">TEMP ADMIN MODE – AUTH DISABLED (TOKEN ONLY)</p>
       <h1>DropCharge Live Dashboard</h1>
       <p>Die letzten Affiliate-Klicks in Echtzeit – gespeist aus Supabase.</p>
     </div>
     <div class="admin-actions">
       <a class="btn ghost" href="/">← Landingpage</a>
-      <a class="btn ghost" href="/admin/logout">Logout</a>
+      <button class="btn ghost" id="admin-clear-token">Token löschen</button>
     </div>
   </header>
 
@@ -62,7 +63,7 @@
       </div>
     </section>
 
-        <section class="admin-card full">
+    <section class="admin-card full">
       <h2>Letzte Email Signups</h2>
       <div class="table" id="email-table">
         <div class="table-head email-head">

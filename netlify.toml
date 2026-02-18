@@ -29,12 +29,6 @@
   status = 302
   force = true
 
-[[redirects]]
-  from = "/admin/logout"
-  to = "/.netlify/functions/admin-logout"
-  status = 200
-  force = true
-
 [[headers]]
   for = "/*"
   [headers.values]

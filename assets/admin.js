@@ -1,5 +1,8 @@
 const API = '/.netlify/functions/stats';
 const HEALTH_API = '/.netlify/functions/admin-health';
+const SPOTLIGHT_API = '/.netlify/functions/spotlight';
+const TOKEN_STORAGE_KEY = 'admin_token';
+
 const platformEls = {
   PSN: document.querySelector('#platform-stats .stat:nth-child(1) strong'),
   Xbox: document.querySelector('#platform-stats .stat:nth-child(2) strong'),
@@ -14,6 +17,8 @@ const refreshBtn = document.getElementById('refresh');
 const emailCountEl = document.getElementById('email-count');
 const emailConvEl = document.getElementById('email-conv');
 const emailTable = document.getElementById('email-table');
+const spotlightForm = document.getElementById('spotlight-form');
+const spotlightFetchBtn = document.getElementById('spotlight-fetch');
 const toast = document.createElement('div');
 toast.id = 'toast';
 toast.style.position = 'fixed';
@@ -30,11 +35,35 @@ toast.style.transition = 'opacity 0.3s ease';
 document.body.appendChild(toast);
 let lastEntryId = null;
 
+(function ensureTokenPresent() {
+  if (!localStorage.getItem(TOKEN_STORAGE_KEY)) {
+    window.location.href = '/admin-login.html';
+  }
+})();
+
+const clearTokenBtn = document.getElementById('admin-clear-token');
+clearTokenBtn?.addEventListener('click', () => {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  window.location.href = '/admin-login.html';
+});
+
+function buildHeaders(extra = {}) {
+  const headers = { ...extra };
+  const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+  if (token) headers['x-admin-token'] = token;
+  return headers;
+}
+
+function handleUnauthorized() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  window.location.href = '/admin-login.html';
+}
+
 async function fetchStats() {
   try {
-    const res = await fetch(API);
+    const res = await fetch(API, { headers: buildHeaders() });
     if (res.status === 401) {
-      window.location.href = '/admin/login';
+      handleUnauthorized();
       return { entries: [], totals: { platform: { PSN: 0, Xbox: 0, Nintendo: 0 }, amount: {} } };
     }
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -43,19 +72,6 @@ async function fetchStats() {
     console.error('stats API error', err.message);
     return { entries: [], totals: { platform: { PSN: 0, Xbox: 0, Nintendo: 0 }, amount: {} } };
   }
-}
-
-function summarize(entries) {
-  const totals = { platform: { PSN: 0, Xbox: 0, Nintendo: 0 }, amount: {} };
-  entries.forEach(entry => {
-    if (entry.platform && totals.platform[entry.platform] !== undefined) {
-      totals.platform[entry.platform] += 1;
-    }
-    if (entry.amount) {
-      totals.amount[entry.amount] = (totals.amount[entry.amount] || 0) + 1;
-    }
-  });
-  return totals;
 }
 
 function showToast(entry) {
@@ -122,11 +138,22 @@ function render(data) {
   });
 }
 
+async function refresh() {
+  const data = await fetchStats();
+  render(data);
+}
+
+refresh().then(() => {
+  lastEntryId = window.__lastEntries?.[0]?.id || null;
+});
+refreshBtn?.addEventListener('click', refresh);
+setInterval(refresh, 2000);
+
 async function fetchHealth() {
   try {
-    const res = await fetch(HEALTH_API);
+    const res = await fetch(HEALTH_API, { headers: buildHeaders() });
     if (res.status === 401) {
-      window.location.href = '/admin/login';
+      handleUnauthorized();
       return { connected: false, clicks: [] };
     }
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -165,16 +192,56 @@ async function loadHealth() {
   renderHealth(data);
 }
 
-async function refresh() {
-  const data = await fetchStats();
-  render(data);
-}
-
-refresh().then(() => {
-  lastEntryId = window.__lastEntries?.[0]?.id || null;
-});
-refreshBtn?.addEventListener('click', refresh);
-setInterval(refresh, 2000);
-
 loadHealth();
 setInterval(loadHealth, 8000);
+
+function updateSpotlightPreview(data) {
+  const spotlightPreview = document.getElementById('spotlight-preview');
+  if (!spotlightPreview) return;
+  const entry = data || {};
+  spotlightPreview.querySelector('h3').textContent = entry.title || '—';
+  spotlightPreview.querySelector('.desc').textContent = entry.description || 'Noch kein Text.';
+  const meta = spotlightPreview.querySelector('.meta');
+  const release = entry.release_date ? `Release: ${entry.release_date}` : 'Release: n/a';
+  const price = entry.price ? `Preis: ${entry.price}` : '';
+  meta.textContent = [release, price].filter(Boolean).join(' · ');
+}
+
+async function fetchSpotlightAdmin() {
+  try {
+    const res = await fetch(SPOTLIGHT_API);
+    if (!res.ok) throw new Error('spotlight fetch');
+    const data = await res.json();
+    updateSpotlightPreview(data.spotlight);
+  } catch (err) {
+    console.warn('spotlight admin fetch failed', err.message);
+  }
+}
+
+spotlightFetchBtn?.addEventListener('click', fetchSpotlightAdmin);
+spotlightForm?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const formData = new FormData(spotlightForm);
+  const payload = Object.fromEntries(formData.entries());
+  try {
+    const res = await fetch(SPOTLIGHT_API, {
+      method: 'POST',
+      headers: buildHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload)
+    });
+    if (res.status === 401) {
+      handleUnauthorized();
+      return;
+    }
+    if (!res.ok) throw new Error('spotlight save');
+    toast.textContent = 'Spotlight gespeichert';
+    toast.style.opacity = '1';
+    setTimeout(() => { toast.style.opacity = '0'; }, 3500);
+    spotlightForm.reset();
+    fetchSpotlightAdmin();
+  } catch (err) {
+    alert('Spotlight konnte nicht gespeichert werden.');
+  }
+});
+
+fetchSpotlightAdmin();

@@ -1,4 +1,4 @@
-const { getCookie, verifySession } = require('./_lib/auth');
+const { requireAdmin } = require('./_lib/admin-token');
 const { supabase, hasSupabase } = require('./_lib/supabase');
 
 async function fetchLatestClicks() {
@@ -15,11 +15,8 @@ async function fetchLatestClicks() {
 }
 
 exports.handler = async function(event) {
-  const token = getCookie(event.headers || {}, 'dc_admin_session');
-  const allowed = await verifySession(token);
-  if (!allowed) {
-    return { statusCode: 401, body: 'Unauthorized' };
-  }
+  const authError = requireAdmin(event.headers || {});
+  if (authError) return authError;
 
   if (!hasSupabase || !supabase) {
     return {

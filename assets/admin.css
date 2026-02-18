@@ -1,4 +1,4 @@
-.admin {
+ .admin {
   background: #01020a;
   color: #f9fbff;
   min-height: 100vh;
@@ -11,6 +11,17 @@
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+}
+.admin-banner {
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 189, 57, 0.15);
+  color: #ffc76a;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
 }
 .admin-actions { display: flex; gap: 0.6rem; }
 .admin-grid {
