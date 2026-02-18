@@ -1,0 +1,14 @@
+{
+  "tiktokPixelId": "",
+  "affiliateLinks": {
+    "psn-10": "/go/psn-10",
+    "psn-20": "/go/psn-20",
+    "psn-50": "/go/psn-50",
+    "xbox-1m": "/go/xbox-1m",
+    "xbox-3m": "/go/xbox-3m",
+    "xbox-6m": "/go/xbox-6m",
+    "nintendo-15": "/go/nintendo-15",
+    "nintendo-25": "/go/nintendo-25",
+    "nintendo-50": "/go/nintendo-50"
+  }
+}

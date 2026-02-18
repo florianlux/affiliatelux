@@ -67,3 +67,8 @@
   for = "/admin*"
   [headers.values]
     Cache-Control = "no-store, no-cache, must-revalidate"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

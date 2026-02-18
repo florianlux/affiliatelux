@@ -8,22 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/styles.css" />
-  <script>
-    window.TIKTOK_PIXEL_ID = (window.TIKTOK_PIXEL_ID || 'TIKTOK_PIXEL_ID');
-    !function (w, d, t) {
-      w.TiktokAnalyticsObject = t;
-      var ttq = w[t] = w[t] || [];
-      ttq.methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie'];
-      ttq.setAndDefer = function(t, e) { t[e] = function() { t.push([e].concat(Array.prototype.slice.call(arguments, 0))); }; };
-      for (var i = 0; i < ttq.methods.length; i++) ttq.setAndDefer(ttq, ttq.methods[i]);
-      ttq.instance = function(t) { var e = ttq._i[t] || []; for (var n = 0; n < ttq.methods.length; n++) ttq.setAndDefer(e, ttq.methods[n]); return e; };
-      ttq.load = function(e, n) { var i = 'https://analytics.tiktok.com/i18n/pixel/events.js'; ttq._i = ttq._i || {}; ttq._i[e] = []; ttq._i[e]._u = i; ttq._t = ttq._t || {}; ttq._t[e] = +new Date; ttq._o = ttq._o || {}; ttq._o[e] = n || {}; var o = document.createElement('script'); o.type = 'text/javascript'; o.async = true; o.src = i + '?sdkid=' + e + '&lib=' + t; var a = document.getElementsByTagName('script')[0]; a.parentNode.insertBefore(o, a); };
-    }(window, document, 'ttq');
-    if (window.TIKTOK_PIXEL_ID && window.TIKTOK_PIXEL_ID !== 'TIKTOK_PIXEL_ID') {
-      ttq.load(window.TIKTOK_PIXEL_ID);
-      ttq.page();
-    }
-  </script>
 
 </head>
 <body>
@@ -61,7 +45,7 @@
         <h3>PSN 20€</h3>
         <p>-12% vs. Store · Sofort aktivierbar</p>
         <div class="micro">Offizieller Store Code</div>
-        <a class="btn secondary" href="/go/psn-20">Zum Code</a>
+        <a class="btn secondary" href="/go/psn-20" data-affiliate="psn-20">Zum Code</a>
       </div>
     </div>
   </header>
@@ -89,21 +73,21 @@
           <li>
             <span>10 €</span>
             <div>
-              <a class="btn pill" href="/go/psn-10">Zum Code</a>
+              <a class="btn pill" href="/go/psn-10" data-affiliate="psn-10">Zum Code</a>
               <div class="micro">Sofort aktiv · Keine Gebühren</div>
             </div>
           </li>
           <li class="highlight">
             <span>20 €</span>
             <div>
-              <a class="btn pill" href="/go/psn-20">Zum Code</a>
+              <a class="btn pill" href="/go/psn-20" data-affiliate="psn-20">Zum Code</a>
               <div class="micro">Offizieller Store Code</div>
             </div>
           </li>
           <li>
             <span>50 €</span>
             <div>
-              <a class="btn pill" href="/go/psn-50">Zum Code</a>
+              <a class="btn pill" href="/go/psn-50" data-affiliate="psn-50">Zum Code</a>
               <div class="micro">Rabatt vs. PSN</div>
             </div>
           </li>
@@ -119,21 +103,21 @@
           <li>
             <span>1 Monat</span>
             <div>
-              <a class="btn pill" href="/go/xbox-1m">Zum Code</a>
+              <a class="btn pill" href="/go/xbox-1m" data-affiliate="xbox-1m">Zum Code</a>
               <div class="micro">Sofort aktiv · Keine Gebühren</div>
             </div>
           </li>
           <li class="highlight">
             <span>3 Monate</span>
             <div>
-              <a class="btn pill" href="/go/xbox-3m">Zum Code</a>
+              <a class="btn pill" href="/go/xbox-3m" data-affiliate="xbox-3m">Zum Code</a>
               <div class="micro">Offizieller Store Code</div>
             </div>
           </li>
           <li>
             <span>6 Monate</span>
             <div>
-              <a class="btn pill" href="/go/xbox-6m">Zum Code</a>
+              <a class="btn pill" href="/go/xbox-6m" data-affiliate="xbox-6m">Zum Code</a>
               <div class="micro">Rabatt vs. Store</div>
             </div>
           </li>
@@ -149,21 +133,21 @@
           <li>
             <span>15 €</span>
             <div>
-              <a class="btn pill" href="/go/nintendo-15">Zum Code</a>
+              <a class="btn pill" href="/go/nintendo-15" data-affiliate="nintendo-15">Zum Code</a>
               <div class="micro">Sofort aktiv · Keine Gebühren</div>
             </div>
           </li>
           <li class="highlight">
             <span>25 €</span>
             <div>
-              <a class="btn pill" href="/go/nintendo-25">Zum Code</a>
+              <a class="btn pill" href="/go/nintendo-25" data-affiliate="nintendo-25">Zum Code</a>
               <div class="micro">Offizieller Store Code</div>
             </div>
           </li>
           <li>
             <span>50 €</span>
             <div>
-              <a class="btn pill" href="/go/nintendo-50">Zum Code</a>
+              <a class="btn pill" href="/go/nintendo-50" data-affiliate="nintendo-50">Zum Code</a>
               <div class="micro">Rabatt vs. Store</div>
             </div>
           </li>

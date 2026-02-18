@@ -4,6 +4,117 @@ const STORAGE_KEY = 'dropcharge-clicks';
 const activityClicksEl = document.querySelector('[data-activity-clicks]');
 const activityTopEl = document.querySelector('[data-activity-top]');
 
+const defaultConfig = {
+  tiktokPixelId: null,
+  affiliateLinks: {}
+};
+
+let runtimeConfig = {
+  ...defaultConfig,
+  ...(window.__CONFIG__ || {})
+};
+let pixelLoaded = false;
+
+loadRuntimeConfig();
+
+async function loadRuntimeConfig() {
+  let remoteConfig = {};
+  try {
+    const res = await fetch('/config.json', { cache: 'no-store' });
+    if (res.ok) {
+      remoteConfig = await res.json();
+    }
+  } catch (err) {
+    console.warn('config load failed', err.message);
+  }
+
+  runtimeConfig = {
+    ...defaultConfig,
+    ...(window.__CONFIG__ || {}),
+    ...(remoteConfig || {})
+  };
+
+  if (runtimeConfig.tiktokPixelId) {
+    initTikTokPixel(runtimeConfig.tiktokPixelId);
+  }
+  hydrateAffiliateLinks();
+}
+
+function initTikTokPixel(pixelId) {
+  if (!pixelId || pixelLoaded) return;
+  ensureTikTokBootstrap();
+  if (typeof window.ttq === 'undefined') return;
+  window.ttq.load(pixelId);
+  window.ttq.page();
+  pixelLoaded = true;
+}
+
+function ensureTikTokBootstrap() {
+  if (window.ttq) return;
+  const name = 'ttq';
+  window.TiktokAnalyticsObject = name;
+  const ttq = window[name] = window[name] || [];
+  ttq.methods = ['page', 'track', 'identify', 'instances', 'debug', 'on', 'off', 'once', 'ready', 'alias', 'group', 'enableCookie', 'disableCookie'];
+  ttq.setAndDefer = function(t, e) { t[e] = function() { t.push([e].concat(Array.prototype.slice.call(arguments, 0))); }; };
+  for (let i = 0; i < ttq.methods.length; i += 1) {
+    ttq.setAndDefer(ttq, ttq.methods[i]);
+  }
+  ttq.instance = function(id) {
+    const instance = ttq._i[id] || [];
+    for (let n = 0; n < ttq.methods.length; n += 1) {
+      ttq.setAndDefer(instance, ttq.methods[n]);
+    }
+    return instance;
+  };
+  ttq.load = function(id, opts) {
+    const src = 'https://analytics.tiktok.com/i18n/pixel/events.js';
+    ttq._i = ttq._i || {};
+    ttq._i[id] = [];
+    ttq._i[id]._u = src;
+    ttq._t = ttq._t || {};
+    ttq._t[id] = +new Date();
+    ttq._o = ttq._o || {};
+    ttq._o[id] = opts || {};
+    const script = document.createElement('script');
+    script.type = 'text/javascript';
+    script.async = true;
+    script.src = `${src}?sdkid=${id}&lib=${name}`;
+    const firstScript = document.getElementsByTagName('script')[0];
+    firstScript.parentNode.insertBefore(script, firstScript);
+  };
+}
+
+function hydrateAffiliateLinks() {
+  const links = document.querySelectorAll('[data-affiliate]');
+  links.forEach(link => {
+    const slug = link.getAttribute('data-affiliate');
+    if (!slug) return;
+    const href = getAffiliateUrl(slug);
+    link.setAttribute('href', href);
+    if (/^https?:\/\//i.test(href)) {
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+    } else {
+      link.removeAttribute('target');
+      link.removeAttribute('rel');
+    }
+  });
+}
+
+function getAffiliateUrl(slug) {
+  if (!slug) return '#';
+  const overrides = runtimeConfig.affiliateLinks || {};
+  return overrides[slug] || `/go/${slug}`;
+}
+
+function resolveSlugFromLink(link) {
+  if (!link) return null;
+  const dataSlug = link.getAttribute('data-affiliate');
+  if (dataSlug) return dataSlug;
+  const href = link.getAttribute('href') || '';
+  return href.startsWith('/go/') ? href.replace('/go/', '') : null;
+}
+
 function loadClicks() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -49,27 +160,29 @@ if (sticky) {
 
 // intercept buttons to increment local counts
 const slugMap = new Map([
-  ['/go/psn-10', 'psn'],
-  ['/go/psn-20', 'psn'],
-  ['/go/psn-50', 'psn'],
-  ['/go/xbox-1m', 'xbox'],
-  ['/go/xbox-3m', 'xbox'],
-  ['/go/xbox-6m', 'xbox'],
-  ['/go/nintendo-15', 'nintendo'],
-  ['/go/nintendo-25', 'nintendo'],
-  ['/go/nintendo-50', 'nintendo'],
+  ['psn-10', 'psn'],
+  ['psn-20', 'psn'],
+  ['psn-50', 'psn'],
+  ['xbox-1m', 'xbox'],
+  ['xbox-3m', 'xbox'],
+  ['xbox-6m', 'xbox'],
+  ['nintendo-15', 'nintendo'],
+  ['nintendo-25', 'nintendo'],
+  ['nintendo-50', 'nintendo'],
 ]);
 
-document.querySelectorAll('a[href^="/go/"]').forEach(link => {
-  link.addEventListener('click', (event) => {
-    const href = link.getAttribute('href');
-    const key = slugMap.get(href);
-    if (key && clicks[key] !== undefined) {
-      clicks[key] += 1;
+const affiliateLinks = document.querySelectorAll('a[href^="/go/"], [data-affiliate]');
+affiliateLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    const slug = resolveSlugFromLink(link);
+    if (!slug) return;
+    const bucket = slugMap.get(slug);
+    if (bucket && typeof clicks[bucket] === 'number') {
+      clicks[bucket] += 1;
       saveClicks(clicks);
       updateUI(clicks);
     }
-    track('ClickOutbound', { slug: href });
+    track('ClickOutbound', { slug: `/go/${slug}` });
   });
 });
 
@@ -154,9 +267,8 @@ async function logEvent(name, meta = {}) {
 }
 
 function firePixel(name, meta = {}) {
-  if (window.ttq && window.TIKTOK_PIXEL_ID && window.TIKTOK_PIXEL_ID !== 'TIKTOK_PIXEL_ID') {
-    window.ttq.track(name, meta);
-  }
+  if (!pixelLoaded || !window.ttq) return;
+  window.ttq.track(name, meta);
 }
 
 function track(name, meta = {}) {
