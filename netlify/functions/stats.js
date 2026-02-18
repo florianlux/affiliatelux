@@ -1,17 +1,10 @@
-const fs = require('fs');
-const path = require('path');
 const { getCookie, verifySession } = require('./_lib/auth');
 const { supabase, hasSupabase } = require('./_lib/supabase');
 
-function readLocal(name) {
-  const dir = path.join(__dirname, '..', '..', 'data');
-  const file = path.join(dir, `${name}.json`);
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
-}
-
 exports.handler = async function(event) {
   const token = getCookie(event.headers || {}, 'dc_admin_session');
-  if (!verifySession(token)) {
+  const allowed = await verifySession(token);
+  if (!allowed) {
     return { statusCode: 401, body: 'Unauthorized' };
   }
 
@@ -67,36 +60,5 @@ exports.handler = async function(event) {
     }
   }
 
-  // Local fallback (no Supabase configured)
-  try {
-    const entries = readLocal('clicks');
-    const emails = readLocal('emails');
-    const totals = {
-      platform: { PSN: 0, Xbox: 0, Nintendo: 0 },
-      amount: {}
-    };
-    entries.forEach(entry => {
-      if (entry.platform && totals.platform[entry.platform] !== undefined) {
-        totals.platform[entry.platform] += 1;
-      }
-      if (entry.amount) {
-        totals.amount[entry.amount] = (totals.amount[entry.amount] || 0) + 1;
-      }
-    });
-    const emailCount = emails.length;
-    const conversion = entries.length ? emailCount / entries.length : 0;
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        entries: entries.slice(-200).reverse(),
-        totals,
-        emailCount,
-        conversion,
-        emails: emails.slice(-50).reverse()
-      })
-    };
-  } catch (err) {
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
-  }
+  return { statusCode: 500, body: 'Storage not configured' };
 };

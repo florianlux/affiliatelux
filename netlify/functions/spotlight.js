@@ -1,68 +1,44 @@
-const fs = require('fs');
-const path = require('path');
 const { supabase, hasSupabase } = require('./_lib/supabase');
 const { getCookie, verifySession } = require('./_lib/auth');
 
-const fallbackFile = path.join(__dirname, '..', '..', 'data', 'spotlights.json');
-
-function readLocalSpotlight() {
-  try {
-    if (!fs.existsSync(fallbackFile)) return null;
-    const raw = fs.readFileSync(fallbackFile, 'utf-8');
-    const list = JSON.parse(raw);
-    if (Array.isArray(list) && list.length) {
-      return list[0];
-    }
-  } catch (err) {
-    console.log('Local spotlight read failed', err.message);
+async function fetchLatestSpotlight() {
+  if (!hasSupabase || !supabase) {
+    throw new Error('Storage not configured');
   }
-  return null;
-}
-
-function writeLocalSpotlight(record) {
-  try {
-    const dir = path.dirname(fallbackFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    let list = [];
-    if (fs.existsSync(fallbackFile)) {
-      try {
-        list = JSON.parse(fs.readFileSync(fallbackFile, 'utf-8'));
-        if (!Array.isArray(list)) list = [];
-      } catch {
-        list = [];
-      }
-    }
-    list.unshift(record);
-    fs.writeFileSync(fallbackFile, JSON.stringify(list, null, 2));
-    return true;
-  } catch (err) {
-    console.log('Local spotlight write failed', err.message);
-    return false;
+  const { data, error } = await supabase
+    .from('spotlights')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) {
+    throw error;
   }
+  return data && data.length ? data[0] : null;
 }
 
 async function handleGet() {
-  if (hasSupabase && supabase) {
-    const { data, error } = await supabase
-      .from('spotlights')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (error) {
-      console.log('spotlight get error', error.message);
-    } else if (data && data.length) {
-      return data[0];
-    }
+  try {
+    const spotlight = await fetchLatestSpotlight();
+    return {
+      statusCode: 200,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ spotlight })
+    };
+  } catch (err) {
+    console.log('spotlight get error', err.message);
+    return { statusCode: 500, body: 'Failed to load spotlight' };
   }
-  return readLocalSpotlight();
 }
 
 async function handlePost(event) {
   const token = getCookie(event.headers || {}, 'dc_admin_session');
-  if (!verifySession(token)) {
+  const allowed = await verifySession(token);
+  if (!allowed) {
     return { statusCode: 401, body: 'Unauthorized' };
+  }
+
+  if (!hasSupabase || !supabase) {
+    return { statusCode: 500, body: 'Storage not configured' };
   }
 
   let payload = {};
@@ -87,17 +63,10 @@ async function handlePost(event) {
     created_at: new Date().toISOString()
   };
 
-  if (hasSupabase && supabase) {
-    const { error } = await supabase.from('spotlights').insert(record);
-    if (error) {
-      console.log('spotlight insert error', error.message);
-      return { statusCode: 500, body: 'Failed to save spotlight' };
-    }
-  } else {
-    const ok = writeLocalSpotlight(record);
-    if (!ok) {
-      return { statusCode: 500, body: 'Failed to store spotlight locally' };
-    }
+  const { error } = await supabase.from('spotlights').insert(record);
+  if (error) {
+    console.log('spotlight insert error', error.message);
+    return { statusCode: 500, body: 'Failed to save spotlight' };
   }
 
   return {
@@ -109,16 +78,11 @@ async function handlePost(event) {
 
 exports.handler = async function(event) {
   if (event.httpMethod === 'GET') {
-    const spotlight = await handleGet();
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ spotlight })
-    };
+    return handleGet();
   }
 
   if (event.httpMethod === 'POST') {
-    return await handlePost(event);
+    return handlePost(event);
   }
 
   return { statusCode: 405, body: 'Method Not Allowed' };

@@ -20,14 +20,14 @@ exports.handler = async function(event) {
   const password = payload.password || '';
   const ip = getIp(event.headers || {});
 
-  if (isRateLimited(ip)) {
+  if (await isRateLimited(ip)) {
     return { statusCode: 429, body: 'Login fehlgeschlagen' };
   }
 
   try {
     const ok = await verifyPassword(password);
     if (!ok) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       return { statusCode: 401, body: 'Login fehlgeschlagen' };
     }
   } catch (err) {
@@ -35,9 +35,9 @@ exports.handler = async function(event) {
     return { statusCode: 500, body: 'Login fehlgeschlagen' };
   }
 
-  clearAttempts(ip);
-  const token = createSession(ip);
-  logAudit('login_success', { ip });
+  await clearAttempts(ip);
+  const token = await createSession(ip);
+  await logAudit('login_success', { ip });
 
   return {
     statusCode: 200,

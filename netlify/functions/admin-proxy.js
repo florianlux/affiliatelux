@@ -22,7 +22,8 @@ exports.handler = async function(event) {
   }
 
   const token = getCookie(event.headers, 'dc_admin_session');
-  if (!verifySession(token)) {
+  const allowed = await verifySession(token);
+  if (!allowed) {
     return {
       statusCode: 302,
       headers: { Location: '/admin/login' },

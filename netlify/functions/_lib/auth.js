@@ -1,31 +1,15 @@
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const { supabase, hasSupabase } = require('./supabase');
 
-const dataDir = path.join(__dirname, '..', '..', 'data');
-const sessionsFile = path.join(dataDir, 'sessions.json');
-const attemptsFile = path.join(dataDir, 'login-attempts.json');
-const auditFile = path.join(dataDir, 'audit-log.json');
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
 
-function ensureDir() {
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+function ensureSupabase(feature) {
+  if (!hasSupabase || !supabase) {
+    throw new Error(`Supabase not configured (${feature})`);
   }
-}
-
-function readJSON(file, fallback) {
-  try {
-    if (!fs.existsSync(file)) return fallback;
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJSON(file, data) {
-  ensureDir();
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
 
 async function verifyPassword(plain) {
@@ -34,77 +18,109 @@ async function verifyPassword(plain) {
   return bcrypt.compare(plain, hash);
 }
 
-function summarizeAttempts(attempts) {
-  const windowMs = 10 * 60 * 1000;
-  const cutoff = Date.now() - windowMs;
-  Object.keys(attempts).forEach(ip => {
-    attempts[ip] = attempts[ip].filter(ts => ts > cutoff);
-    if (attempts[ip].length === 0) delete attempts[ip];
-  });
+async function isRateLimited(ip) {
+  if (!ip) return false;
+  if (!hasSupabase || !supabase) return false;
+  const cutoff = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString();
+  const { count, error } = await supabase
+    .from('admin_login_attempts')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .gte('created_at', cutoff);
+  if (error) {
+    console.log('rate limit check failed', error.message);
+    return false;
+  }
+  return (count || 0) >= RATE_LIMIT_MAX_ATTEMPTS;
 }
 
-function isRateLimited(ip) {
-  const attempts = readJSON(attemptsFile, {});
-  summarizeAttempts(attempts);
-  const list = attempts[ip] || [];
-  writeJSON(attemptsFile, attempts);
-  return list.length >= 5;
+async function recordFailedAttempt(ip) {
+  if (!ip) return;
+  if (!hasSupabase || !supabase) return;
+  const { error } = await supabase
+    .from('admin_login_attempts')
+    .insert({ ip });
+  if (error) {
+    console.log('record attempt failed', error.message);
+  }
+  await logAudit('failed_login', { ip });
 }
 
-function recordFailedAttempt(ip) {
-  const attempts = readJSON(attemptsFile, {});
-  summarizeAttempts(attempts);
-  attempts[ip] = attempts[ip] || [];
-  attempts[ip].push(Date.now());
-  writeJSON(attemptsFile, attempts);
-  logAudit('failed_login', { ip });
+async function clearAttempts(ip) {
+  if (!ip) return;
+  if (!hasSupabase || !supabase) return;
+  await supabase
+    .from('admin_login_attempts')
+    .delete()
+    .eq('ip', ip);
 }
 
-function clearAttempts(ip) {
-  const attempts = readJSON(attemptsFile, {});
-  if (attempts[ip]) {
-    delete attempts[ip];
-    writeJSON(attemptsFile, attempts);
+async function logAudit(event, payload = {}) {
+  if (!hasSupabase || !supabase) return;
+  const entry = {
+    event,
+    payload,
+    created_at: new Date().toISOString()
+  };
+  const { error } = await supabase
+    .from('admin_audit_log')
+    .insert(entry);
+  if (error) {
+    console.log('audit log failed', error.message);
   }
 }
 
-function logAudit(event, payload = {}) {
-  const current = readJSON(auditFile, []);
-  current.push({
-    event,
-    payload,
-    timestamp: new Date().toISOString()
-  });
-  writeJSON(auditFile, current.slice(-500));
-}
-
-function createSession(ip) {
-  ensureDir();
-  const sessions = readJSON(sessionsFile, []);
+async function createSession(ip) {
+  ensureSupabase('session storage');
   const token = crypto.randomBytes(32).toString('hex');
   const now = Date.now();
-  const expiresAt = now + 24 * 60 * 60 * 1000;
-  sessions.push({ token, ip, createdAt: now, expiresAt });
-  writeJSON(sessionsFile, sessions.filter(s => s.expiresAt > now - 5 * 60 * 1000));
+  const expiresAt = new Date(now + SESSION_TTL_MS).toISOString();
+  const record = {
+    token,
+    ip: ip || null,
+    created_at: new Date(now).toISOString(),
+    expires_at: expiresAt
+  };
+  const { error } = await supabase
+    .from('admin_sessions')
+    .insert(record);
+  if (error) {
+    throw new Error(`Failed to create session: ${error.message}`);
+  }
+  await supabase
+    .from('admin_sessions')
+    .delete()
+    .lte('expires_at', new Date(Date.now() - SESSION_TTL_MS).toISOString());
   return token;
 }
 
-function verifySession(token) {
+async function verifySession(token) {
   if (!token) return false;
-  const sessions = readJSON(sessionsFile, []);
-  const now = Date.now();
-  const match = sessions.find(s => s.token === token && s.expiresAt > now);
-  if (!match) return false;
-  return true;
+  if (!hasSupabase || !supabase) return false;
+  const nowIso = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('admin_sessions')
+    .select('token')
+    .eq('token', token)
+    .gt('expires_at', nowIso)
+    .maybeSingle();
+  if (error) {
+    console.log('session verify failed', error.message);
+    return false;
+  }
+  return Boolean(data);
 }
 
-function destroySession(token) {
-  const sessions = readJSON(sessionsFile, []);
-  const filtered = sessions.filter(s => s.token !== token);
-  writeJSON(sessionsFile, filtered);
+async function destroySession(token) {
+  if (!token) return;
+  if (!hasSupabase || !supabase) return;
+  await supabase
+    .from('admin_sessions')
+    .delete()
+    .eq('token', token);
 }
 
-function getCookie(headers, name) {
+function getCookie(headers = {}, name) {
   const header = headers.cookie || headers.Cookie || '';
   const cookies = header.split(';').map(chunk => chunk.trim()).filter(Boolean);
   for (const cookie of cookies) {
