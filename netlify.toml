@@ -7,6 +7,12 @@
 
 [[redirects]]
   from = "/go/*"
+[[redirects]]
+  from = "/api/activity"
+  to = "/.netlify/functions/api-activity"
+  status = 200
+  force = true
+
   to = "/.netlify/functions/go/:splat"
   status = 200
   force = true
@@ -55,7 +61,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
-    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; script-src 'self' https://analytics.tiktok.com 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data: https:; script-src 'self' https://analytics.tiktok.com 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co; frame-ancestors 'none';"
     Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
 
 [[headers]]
