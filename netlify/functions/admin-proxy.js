@@ -1,15 +1,13 @@
-const fs = require('fs');
-const path = require('path');
 const { getCookie, verifySession } = require('./_lib/auth');
 
-const adminFile = path.join(__dirname, '..', '..', 'admin.html');
-const loginFile = path.join(__dirname, '..', '..', 'admin-login.html');
-
-function htmlResponse(body) {
+function redirect(to) {
   return {
-    statusCode: 200,
-    headers: { 'Content-Type': 'text/html; charset=utf-8' },
-    body
+    statusCode: 302,
+    headers: {
+      Location: to,
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
+    },
+    body: ''
   };
 }
 
@@ -17,20 +15,14 @@ exports.handler = async function(event) {
   const subPath = event.path.replace(/^\/admin/, '') || '/';
 
   if (subPath.startsWith('/login')) {
-    const html = fs.readFileSync(loginFile, 'utf8');
-    return htmlResponse(html);
+    return redirect('/admin-login.html');
   }
 
-  const token = getCookie(event.headers, 'dc_admin_session');
+  const token = getCookie(event.headers || {}, 'dc_admin_session');
   const allowed = await verifySession(token);
   if (!allowed) {
-    return {
-      statusCode: 302,
-      headers: { Location: '/admin/login' },
-      body: ''
-    };
+    return redirect('/admin-login.html');
   }
 
-  const html = fs.readFileSync(adminFile, 'utf8');
-  return htmlResponse(html);
+  return redirect('/admin.html');
 };
