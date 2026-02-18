@@ -354,3 +354,51 @@ details { background: rgba(255,255,255,0.03); border-radius: 16px; padding: 1rem
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+
+.drop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drop-tag {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+}
+.drop-subtitle {
+  color: rgba(255,255,255,0.85);
+  margin-top: 0.4rem;
+}
+.drop-pill-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 0.8rem 0;
+}
+.pill {
+  padding: 0.25rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.12);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+}
+.pill-ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.drop-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.8rem;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.drop-benefits li { display: flex; align-items: center; gap: 0.4rem; }
