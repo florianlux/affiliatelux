@@ -1,9 +1,19 @@
 const { supabase, hasSupabase } = require('./_lib/supabase');
 const { requireAdmin } = require('./_lib/admin-token');
 
+const fallbackSpotlight = {
+  title: 'Reanimal',
+  cover_url: '/images/reanimal.jpg',
+  description: 'Düsteres Koop-Horror-Abenteuer auf einer albtraumhaften Insel – perfekt für Fans von Little Nightmares.',
+  amazon_url: 'https://amzn.to/',
+  g2g_url: 'https://www.g2a.com/',
+  release_date: 'tba',
+  price: 'Preis prüfen'
+};
+
 async function fetchLatestSpotlight() {
   if (!hasSupabase || !supabase) {
-    throw new Error('Storage not configured');
+    return fallbackSpotlight;
   }
   const { data, error } = await supabase
     .from('spotlights')
@@ -11,9 +21,11 @@ async function fetchLatestSpotlight() {
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) {
-    throw error;
+    console.log('spotlight fetch error', error.message);
+    return fallbackSpotlight;
   }
-  return data && data.length ? data[0] : null;
+  const spotlight = data && data.length ? data[0] : null;
+  return spotlight || fallbackSpotlight;
 }
 
 async function handleGet() {
