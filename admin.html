@@ -119,8 +119,171 @@
         </div>
       </div>
     </section>
+
+    <section class="admin-card full">
+      <div class="admin-head">
+        <h2>🚀 Auto Product Generator (Beta)</h2>
+        <span class="badge" style="padding: 0.4rem 0.8rem; background: rgba(255, 107, 107, 0.2); color: #ff6b6b;">Neu!</span>
+      </div>
+      <div class="product-generator">
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">
+          Gib einfach einen Amazon-Link ein - der Rest wird automatisiert! 🤖✨
+          <br>
+          <small style="opacity: 0.7;">📝 Akzeptiert: amazon.de/dp/B123ABC, ASIN direkt (B123ABC), oder beliebig lange Amazon URLs</small>
+          <br>
+          <small style="opacity: 0.6; color: #ffc76a;">⚠️ Hinweis: Lokal funktioniert das Scraping möglicherweise nicht (Amazon blockt Test-Server). Auf Netlify deployern für volle Funktionalität!</small>
+        </p>
+        <form class="product-form" id="auto-product-form">
+          <div class="form-row">
+            <div class="form-group" style="flex: 1;">
+              <label>Amazon Link (Affiliate Link)*</label>
+              <input type="text" name="amazonUrl" required placeholder="https://amazon.de/dp/..." />
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label>Dein Affiliate Key *</label>
+              <input type="text" name="affiliateKey" required placeholder="z.B. dropcharge-21" />
+            </div>
+          </div>
+
+          <details style="margin: 1.5rem 0; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); border: 1px solid var(--border-primary);">
+            <summary style="cursor: pointer; color: var(--text-secondary); font-weight: 600;">📝 Optionale Anpassungen</summary>
+            <div style="margin-top: 1rem;">
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Produkt-Titel (optional)</label>
+                  <input type="text" name="customTitle" placeholder="Überschreibe Produkt-Name..." />
+                </div>
+                <div class="form-group">
+                  <label>Cover-Bild URL (optional)</label>
+                  <input type="text" name="customImage" placeholder="https://..." />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Beschreibung (optional)</label>
+                <textarea name="customDescription" placeholder="Benutzerdefinierte Beschreibung..." rows="2"></textarea>
+              </div>
+            </div>
+          </details>
+
+          <div>
+            <button type="submit" class="btn primary" style="background: linear-gradient(135deg, #ff6b6b, #ffa500); margin-top: 1rem; width: 100%;">⚡ Produkt-Seite generieren</button>
+          </div>
+        </form>
+
+        <div id="auto-product-preview" style="display: none; margin-top: 2rem;">
+          <div style="background: rgba(124, 224, 164, 0.15); border: 1px solid #7ce0a4; border-radius: var(--radius-sm); padding: 1rem; margin-bottom: 1.5rem;">
+            <p style="color: #7ce0a4; font-weight: 600; margin: 0;">✅ Produkt erfolgreich generiert!</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+            <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-sm);">
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600;">Produkt-Seite URL</p>
+              <input type="text" id="product-page-url" readonly style="width: 100%; padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-primary); background: rgba(0,0,0,0.2); color: var(--accent-primary); font-size: 0.85rem;" />
+            </div>
+            <div style="background: var(--bg-input); padding: 1rem; border-radius: var(--radius-sm);">
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; font-weight: 600;">Share URL</p>
+              <input type="text" id="share-url" readonly style="width: 100%; padding: 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--border-primary); background: rgba(0,0,0,0.2); color: var(--accent-primary); font-size: 0.85rem;" />
+            </div>
+          </div>
+
+          <div class="btn-group" style="margin-top: 1.5rem; justify-content: flex-start;">
+            <button class="btn-copy" id="copy-page-url-btn">📋 URL kopieren</button>
+            <button class="btn-copy" id="download-page-btn">💾 HTML herunterladen</button>
+            <button class="btn-copy" id="preview-page-btn">👁️ Vorschau</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-card full">
+      <div class="admin-head">
+        <h2>📊 Meine Auto-Produkte</h2>
+        <button class="btn mini" id="refresh-auto-products">🔄 Aktualisieren</button>
+      </div>
+      <div class="table" id="auto-products-table">
+        <div class="table-head">
+          <span>Produkt</span>
+          <span>ASIN</span>
+          <span>Views</span>
+          <span>Clicks</span>
+          <span>Status</span>
+          <span>Erstellt</span>
+        </div>
+      </div>
+    </section>
+      <div class="product-generator">
+        <form class="product-form" id="product-gen-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Produkt-Name *</label>
+              <input type="text" name="productName" required placeholder="z.B. PlayStation 5" />
+            </div>
+            <div class="form-group">
+              <label>Produktslug *</label>
+              <input type="text" name="slug" required placeholder="ps5-bundle" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Kurzbeschreibung</label>
+            <textarea name="description" placeholder="Optionale Produktbeschreibung..." rows="3"></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Cover-Bild URL</label>
+              <input type="url" name="coverUrl" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+              <label>Preis</label>
+              <input type="text" name="price" placeholder="499,99 €" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Affiliate Key *</label>
+              <input type="text" name="affiliateKey" required placeholder="Dein Affiliate-Schlüssel" />
+            </div>
+            <div class="form-group">
+              <label>Amazon Link</label>
+              <input type="url" name="amazonUrl" placeholder="https://amazon.de/..." />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>G2G Link</label>
+              <input type="url" name="g2gUrl" placeholder="https://www.g2a.com/..." />
+            </div>
+            <div class="form-group">
+              <label>Andere Links</label>
+              <input type="url" name="otherUrl" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div>
+            <button type="submit" class="btn primary" style="margin-top: 0.5rem;">Seite generieren</button>
+          </div>
+        </form>
+
+        <div class="product-preview" id="product-preview" style="display: none;">
+          <h3 id="preview-title">—</h3>
+          <p id="preview-price" style="font-weight: 600; color: var(--accent-primary); margin: 0.8rem 0;">—</p>
+          <p id="preview-description" style="font-size: 0.95rem; line-height: 1.6;">—</p>
+          <div class="code-block" id="preview-code" style="text-align: left; margin-top: 1.5rem;">
+            <code id="code-content"></code>
+          </div>
+          <div class="btn-group" style="justify-content: center; margin-top: 1.5rem;">
+            <button class="btn-copy" id="copy-html-btn">📋 HTML kopieren</button>
+            <button class="btn-copy" id="copy-url-btn">🔗 URL kopieren</button>
+            <button class="btn-copy" id="download-html-btn">💾 Herunterladen</button>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <script type="module" src="./assets/admin.js"></script>
+  <script type="module" src="./assets/admin-dashboard.js"></script>
 </body>
 </html>

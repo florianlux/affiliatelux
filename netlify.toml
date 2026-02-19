@@ -18,6 +18,13 @@
   force = true
 
 [[redirects]]
+  from = "/:page-slug"
+  to = "/.netlify/functions/product-page/:page-slug"
+  status = 200
+  force = false
+  conditions = { Role = ["Admin"] }
+
+[[redirects]]
   from = "/admin/login"
   to = "/admin-login.html"
   status = 302

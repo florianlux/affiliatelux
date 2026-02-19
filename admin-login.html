@@ -15,12 +15,21 @@
     .card { width: min(360px, 100%); background: var(--surface); border-radius: 24px; padding: 2rem; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(18px); box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
     h1 { margin-top: 0; font-size: 1.7rem; }
     label { display: block; font-size: 0.9rem; margin-bottom: 0.4rem; color: rgba(255,255,255,0.8); }
-    input { width: 100%; padding: 0.9rem 1rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.35); color: #fff; font-size: 1rem; }
-    button { width: 100%; border: none; border-radius: 14px; padding: 0.9rem 1rem; margin-top: 1rem; font-weight: 600; background: linear-gradient(120deg, var(--accent), #4fd5ff); color: #050505; cursor: pointer; }
-    button.secondary { background: rgba(255,255,255,0.1); color: #fff; margin-top: 0.6rem; }
+    .input-group { position: relative; display: flex; align-items: center; }
+    input { width: 100%; padding: 0.9rem 1rem; padding-right: 2.8rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.35); color: #fff; font-size: 1rem; transition: border-color 0.2s; }
+    input:focus { outline: none; border-color: var(--accent); }
+    .toggle-visibility { position: absolute; right: 1rem; background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; padding: 0.4rem; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; width: auto; margin: 0; }
+    .toggle-visibility:hover { color: rgba(255,255,255,0.9); }
+    button { width: 100%; border: none; border-radius: 14px; padding: 0.9rem 1rem; margin-top: 1rem; font-weight: 600; background: linear-gradient(120deg, var(--accent), #4fd5ff); color: #050505; cursor: pointer; transition: opacity 0.2s; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    button.secondary { background: rgba(255,255,255,0.1); color: #fff; margin-top: 0.6rem; width: auto; float: right; }
+    .button-group { display: flex; gap: 0.6rem; margin-top: 1rem; }
+    .button-group button { flex: 1; margin: 0; }
     .hint { font-size: 0.85rem; color: #b5bfdc; margin-bottom: 1rem; }
     .error { color: #ff9f9f; font-size: 0.85rem; margin-top: 0.8rem; display: none; }
     .error.visible { display: block; }
+    .success { color: #9fff9f; font-size: 0.85rem; margin-top: 0.8rem; display: none; }
+    .success.visible { display: block; }
   </style>
 </head>
 <body>
@@ -30,10 +39,16 @@
     <p class="hint">Gib dein einmaliges Admin-Token ein. Es wird nur lokal im Browser gespeichert.</p>
     <form id="login-form">
       <label for="token">Token</label>
-      <input type="password" id="token" name="token" autocomplete="off" required />
-      <button type="submit">Speichern & Dashboard öffnen</button>
-      <button type="button" class="secondary" id="clear-token">Token löschen</button>
-      <p class="error" id="error">Kein Token eingetragen.</p>
+      <div class="input-group">
+        <input type="password" id="token" name="token" autocomplete="off" required />
+        <button type="button" class="toggle-visibility" id="toggle-btn" title="Token anzeigen/verbergen">👁</button>
+      </div>
+      <div class="button-group">
+        <button type="submit">Speichern & Dashboard öffnen</button>
+        <button type="button" class="secondary" id="clear-token">Löschen</button>
+      </div>
+      <p class="error" id="error" role="alert" aria-live="polite">Kein Token eingetragen.</p>
+      <p class="success" id="success" role="status" aria-live="polite">Token gespeichert!</p>
     </form>
   </div>
 
@@ -41,28 +56,61 @@
     const STORAGE_KEY = 'admin_token';
     const form = document.getElementById('login-form');
     const error = document.getElementById('error');
+    const success = document.getElementById('success');
     const tokenInput = document.getElementById('token');
     const clearBtn = document.getElementById('clear-token');
+    const toggleBtn = document.getElementById('toggle-btn');
 
+    // Load token if exists
     tokenInput.value = localStorage.getItem(STORAGE_KEY) || '';
 
+    // Toggle password visibility
+    toggleBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isPassword = tokenInput.type === 'password';
+      tokenInput.type = isPassword ? 'text' : 'password';
+      toggleBtn.textContent = isPassword ? '🙈' : '👁';
+    });
+
+    // Submit form
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       error.classList.remove('visible');
+      success.classList.remove('visible');
+      
       const token = tokenInput.value.trim();
       if (!token) {
         error.textContent = 'Bitte Token eingeben.';
         error.classList.add('visible');
         return;
       }
+      
+      // Disable button during save
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Speichert...';
+      
       localStorage.setItem(STORAGE_KEY, token);
-      window.location.href = '/admin.html';
+      success.classList.add('visible');
+      
+      // Redirect after a short delay
+      setTimeout(() => {
+        window.location.href = '/admin.html';
+      }, 500);
     });
 
+    // Clear token with confirmation
     clearBtn.addEventListener('click', () => {
+      if (tokenInput.value && !confirm('Token wirklich löschen?')) {
+        return;
+      }
       localStorage.removeItem(STORAGE_KEY);
       tokenInput.value = '';
+      tokenInput.type = 'password';
+      toggleBtn.textContent = '👁';
       tokenInput.focus();
+      error.classList.remove('visible');
+      success.classList.remove('visible');
     });
   </script>
 </body>

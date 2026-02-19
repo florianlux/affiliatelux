@@ -64,5 +64,34 @@ create table if not exists public.admin_audit_log (
   created_at timestamptz default now()
 );
 
+create table if not exists public.auto_products (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  
+  amazon_asin text not null unique,
+  amazon_url text not null,
+  product_name text not null,
+  product_image text,
+  price text,
+  rating float,
+  reviews_count int,
+  description text,
+  
+  affiliate_key text not null,
+  page_slug text not null unique,
+  
+  view_count int default 0,
+  click_count int default 0,
+  
+  status text default 'active',
+  is_featured boolean default false,
+  
+  metadata jsonb
+);
+
 create index if not exists admin_login_attempts_ip_created_idx on public.admin_login_attempts (ip, created_at desc);
 create index if not exists admin_sessions_expires_idx on public.admin_sessions (expires_at);
+create index if not exists auto_products_affiliate_idx on public.auto_products (affiliate_key);
+create index if not exists auto_products_status_idx on public.auto_products (status);
+create index if not exists auto_products_featured_idx on public.auto_products (is_featured);
