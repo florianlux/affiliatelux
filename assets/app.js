@@ -316,6 +316,7 @@ emailForm?.addEventListener('submit', async (event) => {
   const formData = new FormData(emailForm);
   const email = formData.get('email');
   try {
+    console.log('[signup] Submitting email:', email);
     const res = await fetch('/.netlify/functions/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -332,7 +333,12 @@ emailForm?.addEventListener('submit', async (event) => {
         }
       })
     });
+    console.log('[signup] Response status:', res.status, 'ok:', res.ok);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
     const data = await res.json();
+    console.log('[signup] Response data:', data);
     if (data.ok) {
       emailForm.innerHTML = '<p class="success">Danke! Deals landen im Postfach.</p>';
       setTimeout(() => popup?.classList.remove('visible'), 2000);
@@ -340,8 +346,8 @@ emailForm?.addEventListener('submit', async (event) => {
       throw new Error(data.details || data.error || 'Signup failed');
     }
   } catch (err) {
-    console.error('Newsletter signup error:', err);
-    alert('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
+    console.error('[signup] Error:', err.message, err);
+    alert(`Signup nicht möglich: ${err.message}`);
   }
 });
 
