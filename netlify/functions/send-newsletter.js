@@ -2,11 +2,11 @@ const { requireAdmin } = require('./_lib/admin-token');
 const { supabase, hasSupabase } = require('./_lib/supabase');
 const { Resend } = require('resend');
 
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+
 if (!process.env.RESEND_API_KEY) {
   console.warn('RESEND_API_KEY not configured - newsletter feature disabled');
 }
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 exports.handler = async function(event) {
   const authError = requireAdmin(event.headers || {});
@@ -44,9 +44,9 @@ exports.handler = async function(event) {
   try {
     // Fetch all confirmed emails
     const { data: emailRows = [], error: fetchErr } = await supabase
-      .from('emails')
+      .from('newsletter_subscribers')
       .select('id,email')
-      .eq('confirmed', true);
+      .eq('status', 'active');
 
     if (fetchErr) {
       console.log('fetch emails error', fetchErr.message);
@@ -54,7 +54,7 @@ exports.handler = async function(event) {
     }
 
     if (emailRows.length === 0) {
-      return { statusCode: 200, body: JSON.stringify({ success: true, sent: 0, failed: 0, message: 'No confirmed emails to send to' }) };
+      return { statusCode: 200, body: JSON.stringify({ success: true, sent: 0, failed: 0, message: 'No active subscribers' }) };
     }
 
     const recipientEmails = emailRows.map(e => e.email);

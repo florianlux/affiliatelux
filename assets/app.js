@@ -316,7 +316,7 @@ emailForm?.addEventListener('submit', async (event) => {
   const formData = new FormData(emailForm);
   const email = formData.get('email');
   try {
-    const res = await fetch('/.netlify/functions/newsletter_signup', {
+    const res = await fetch('/.netlify/functions/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
