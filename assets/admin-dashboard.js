@@ -125,10 +125,22 @@ class Dashboard {
       newsletterProgress: document.getElementById('newsletter-progress'),
       newsletterProgressText: document.getElementById('newsletter-progress-text'),
       newsletterProgressBar: document.getElementById('newsletter-progress-bar'),
-      newsletterSubmit: document.getElementById('newsletter-submit')
+      newsletterSubmit: document.getElementById('newsletter-submit'),
+      leadsTable: document.getElementById('leads-table'),
+      leadsFilter: document.getElementById('leads-filter'),
+      leadsSearch: document.getElementById('leads-search'),
+      leadsRefresh: document.getElementById('leads-refresh'),
+      leadsExport: document.getElementById('leads-export'),
+      leadsCount: document.getElementById('leads-count'),
+      leadsPageInfo: document.getElementById('leads-page-info'),
+      leadsPrev: document.getElementById('leads-prev'),
+      leadsNext: document.getElementById('leads-next')
     };
     
     this.allEmails = [];
+    this.leadsPage = 1;
+    this.leadsPageSize = 50;
+    this.leadsTotalPages = 1;
   }
 
   attachEventListeners() {
@@ -148,6 +160,14 @@ class Dashboard {
 
     // Newsletter
     this.elements.newsletterForm?.addEventListener('submit', (e) => this.handleNewsletterSubmit(e));
+
+    // Leads
+    this.elements.leadsRefresh?.addEventListener('click', () => this.loadLeads());
+    this.elements.leadsFilter?.addEventListener('change', () => { this.leadsPage = 1; this.loadLeads(); });
+    this.elements.leadsSearch?.addEventListener('change', () => { this.leadsPage = 1; this.loadLeads(); });
+    this.elements.leadsExport?.addEventListener('click', () => this.exportLeads());
+    this.elements.leadsPrev?.addEventListener('click', () => { this.leadsPage = Math.max(1, this.leadsPage - 1); this.loadLeads(); });
+    this.elements.leadsNext?.addEventListener('click', () => { this.leadsPage = Math.min(this.leadsTotalPages, this.leadsPage + 1); this.loadLeads(); });
   }
 
   startLiveUpdates() {
@@ -157,9 +177,11 @@ class Dashboard {
 
     setInterval(() => this.refresh(), this.refreshInterval);
     setInterval(() => this.loadHealth(), this.healthInterval);
+    setInterval(() => this.loadLeads(), 30000); // Update leads every 30 seconds
     
-    // Initial health check
+    // Initial health check and loads
     this.loadHealth();
+    this.loadLeads();
   }
 
   async refresh() {
@@ -533,6 +555,77 @@ class Dashboard {
     } finally {
       this.elements.newsletterSubmit.disabled = false;
     }
+  }
+
+  async loadLeads() {
+    const status = this.elements.leadsFilter?.value || 'all';
+    const search = this.elements.leadsSearch?.value || '';
+    
+    const query = new URLSearchParams({
+      status,
+      search,
+      page: this.leadsPage,
+      limit: this.leadsPageSize
+    }).toString();
+
+    const data = await this.api.fetch(`/admin-list-leads?${query}`);
+    if (data) this.renderLeads(data);
+  }
+
+  renderLeads(data) {
+    const { items = [], total = 0, page = 1, pages = 1 } = data;
+
+    if (this.elements.leadsCount) {
+      this.elements.leadsCount.textContent = total;
+    }
+
+    if (this.elements.leadsPageInfo) {
+      this.elements.leadsPageInfo.textContent = `${page} / ${pages}`;
+    }
+
+    this.leadsTotalPages = pages;
+    
+    if (this.elements.leadsPrev) {
+      this.elements.leadsPrev.disabled = page <= 1;
+      this.elements.leadsPrev.style.opacity = page <= 1 ? '0.3' : '0.7';
+    }
+    
+    if (this.elements.leadsNext) {
+      this.elements.leadsNext.disabled = page >= pages;
+      this.elements.leadsNext.style.opacity = page >= pages ? '0.3' : '0.7';
+    }
+
+    if (this.elements.leadsTable) {
+      this.elements.leadsTable.querySelectorAll('.table-row').forEach(row => row.remove());
+      items.forEach(lead => {
+        const sentAt = lead.last_sent_at ? new Date(lead.last_sent_at).toLocaleString() : '—';
+        const createdAt = lead.created_at ? new Date(lead.created_at).toLocaleString() : '—';
+        const row = this.createTableRow(
+          lead.email,
+          `<span style="color: ${lead.status === 'active' ? 'var(--accent-success)' : 'var(--accent-error)'};">${lead.status}</span>`,
+          lead.source || '—',
+          createdAt,
+          sentAt
+        );
+        row.className = 'table-row leads-row';
+        this.elements.leadsTable.appendChild(row);
+      });
+    }
+  }
+
+  async exportLeads() {
+    const status = this.elements.leadsFilter?.value || 'all';
+    const search = this.elements.leadsSearch?.value || '';
+    
+    const query = new URLSearchParams({ status, search }).toString();
+    const url = `/.netlify/functions/admin-export-leads?${query}`;
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `newsletter-leads-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    this.toast.success('✓ Leads exported');
   }
 }
 

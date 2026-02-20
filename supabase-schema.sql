@@ -90,8 +90,53 @@ create table if not exists public.auto_products (
   metadata jsonb
 );
 
+create table if not exists public.newsletter_subscribers (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  email text not null,
+  status text default 'active',
+  source text,
+  utm_source text,
+  utm_campaign text,
+  utm_medium text,
+  utm_content text,
+  utm_term text,
+  meta jsonb,
+  last_sent_at timestamptz,
+  unsubscribed_at timestamptz,
+  unique(lower(email))
+);
+
+create table if not exists public.newsletter_campaigns (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  slug text unique,
+  subject text,
+  sent_at timestamptz,
+  sent_count int default 0,
+  failed_count int default 0,
+  meta jsonb
+);
+
+create table if not exists public.newsletter_sends (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  campaign_id uuid references public.newsletter_campaigns(id) on delete cascade,
+  subscriber_id uuid references public.newsletter_subscribers(id) on delete cascade,
+  status text default 'pending',
+  sent_at timestamptz,
+  opened_at timestamptz,
+  clicked_at timestamptz
+);
+
 create index if not exists admin_login_attempts_ip_created_idx on public.admin_login_attempts (ip, created_at desc);
 create index if not exists admin_sessions_expires_idx on public.admin_sessions (expires_at);
 create index if not exists auto_products_affiliate_idx on public.auto_products (affiliate_key);
 create index if not exists auto_products_status_idx on public.auto_products (status);
 create index if not exists auto_products_featured_idx on public.auto_products (is_featured);
+create index if not exists newsletter_subscribers_email_idx on public.newsletter_subscribers (lower(email));
+create index if not exists newsletter_subscribers_status_idx on public.newsletter_subscribers (status);
+create index if not exists newsletter_subscribers_created_idx on public.newsletter_subscribers (created_at desc);
+create index if not exists newsletter_campaigns_slug_idx on public.newsletter_campaigns (slug);
+create index if not exists newsletter_sends_subscriber_idx on public.newsletter_sends (subscriber_id);
+create index if not exists newsletter_sends_campaign_idx on public.newsletter_sends (campaign_id);

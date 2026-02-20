@@ -123,6 +123,41 @@
 
     <section class="admin-card full">
       <div class="admin-head">
+        <h2>📮 Email & Leads Management</h2>
+        <div class="email-actions">
+          <select id="leads-filter" class="email-filter">
+            <option value="all">Alle</option>
+            <option value="active">Active</option>
+            <option value="unsubscribed">Unsubscribed</option>
+          </select>
+          <input type="text" id="leads-search" placeholder="Search email..." style="padding: 0.4rem 0.8rem; background: var(--bg-input); border: 1px solid var(--border-primary); color: var(--text-primary); border-radius: var(--radius-sm);" />
+          <button class="btn mini" id="leads-refresh">🔄 Refresh</button>
+          <button class="btn mini" id="leads-export">📥 Export CSV</button>
+        </div>
+      </div>
+      <div class="table" id="leads-table">
+        <div class="table-head leads-head">
+          <span>Email</span>
+          <span>Status</span>
+          <span>Source</span>
+          <span>Signup</span>
+          <span>Last Sent</span>
+        </div>
+      </div>
+      <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-primary);">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <p class="micro"><strong id="leads-count">0</strong> leads total</p>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn mini" id="leads-prev" style="opacity: 0.7;">← Prev</button>
+            <span class="micro" id="leads-page-info">1 / 1</span>
+            <button class="btn mini" id="leads-next" style="opacity: 0.7;">Next →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-card full">
+      <div class="admin-head">
         <h2>Weekly Game Spotlight</h2>
         <button class="btn mini" id="spotlight-fetch">Aktuelles laden</button>
       </div>

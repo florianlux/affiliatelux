@@ -316,15 +316,31 @@ emailForm?.addEventListener('submit', async (event) => {
   const formData = new FormData(emailForm);
   const email = formData.get('email');
   try {
-    const res = await fetch('/.netlify/functions/subscribe', {
+    const res = await fetch('/.netlify/functions/newsletter_signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({
+        email,
+        source: 'popup',
+        page: window.location.pathname,
+        utm: {
+          utm_source: new URLSearchParams(window.location.search).get('utm_source'),
+          utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign'),
+          utm_medium: new URLSearchParams(window.location.search).get('utm_medium'),
+          utm_content: new URLSearchParams(window.location.search).get('utm_content'),
+          utm_term: new URLSearchParams(window.location.search).get('utm_term')
+        }
+      })
     });
-    if (!res.ok) throw new Error('Failed');
-    emailForm.innerHTML = '<p class="success">Danke! Deals landen im Postfach.</p>';
-    setTimeout(() => popup?.classList.remove('visible'), 2000);
+    const data = await res.json();
+    if (data.ok) {
+      emailForm.innerHTML = '<p class="success">Danke! Deals landen im Postfach.</p>';
+      setTimeout(() => popup?.classList.remove('visible'), 2000);
+    } else {
+      throw new Error(data.details || data.error || 'Signup failed');
+    }
   } catch (err) {
+    console.error('Newsletter signup error:', err);
     alert('Speichern fehlgeschlagen. Bitte später erneut versuchen.');
   }
 });
