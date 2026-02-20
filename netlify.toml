@@ -54,4 +54,5 @@
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200  conditions = { NOT = [{ urlPath = "/.netlify/functions/*" }] }
+  status = 200
+  conditions = { NOT = [{ urlPath = "/.netlify/functions/*" }] }
