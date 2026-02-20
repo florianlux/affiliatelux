@@ -5,6 +5,13 @@
 [functions]
   directory = "netlify/functions"
 
+# Exact function routes first (highest priority)
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/go/*"
   to = "/.netlify/functions/go/:splat"
@@ -51,8 +58,8 @@
   [headers.values]
     Cache-Control = "no-store, no-cache, must-revalidate"
 
+# Catch-all redirect (lowest priority) for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  conditions = { NOT = [{ urlPath = "/.netlify/functions/*" }] }
