@@ -13,6 +13,8 @@ function isValidEmail(email) {
 }
 
 exports.handler = async function(event) {
+  console.log('[subscribe] Processing request:', { method: event.httpMethod, hasBody: !!event.body });
+  
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -32,36 +34,41 @@ exports.handler = async function(event) {
   const confirmed = process.env.ENABLE_DOUBLE_OPT_IN ? false : true;
 
   if (hasSupabase && supabase) {
-    const { data: existing, error: selectErr } = await supabase
-      .from('emails')
-      .select('id')
-      .eq('email', email)
-      .maybeSingle();
+    try {
+      const { data: existing, error: selectErr } = await supabase
+        .from('emails')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
 
-    if (selectErr) {
-      console.log('email select error', selectErr.message);
-      return { statusCode: 500, body: 'Server error' };
-    }
+      if (selectErr) {
+        console.log('email select error', selectErr.message);
+        return { statusCode: 500, body: 'Server error' };
+      }
 
-    if (existing) {
-      return { statusCode: 200, body: JSON.stringify({ success: true, repeated: true }) };
-    }
+      if (existing) {
+        return { statusCode: 200, body: JSON.stringify({ ok: true, success: true, repeated: true }) };
+      }
 
-    const { error } = await supabase.from('emails').insert({
-      email,
-      confirmed,
-      created_at: new Date().toISOString()
-    });
+      const { error } = await supabase.from('emails').insert({
+        email,
+        confirmed,
+        created_at: new Date().toISOString()
+      });
 
-    if (error) {
-      console.log('email insert error', error.message);
+      if (error) {
+        console.log('email insert error', error.message);
+        return { statusCode: 500, body: 'Server error' };
+      }
+    } catch (err) {
+      console.log('subscribe Supabase error', err.message);
       return { statusCode: 500, body: 'Server error' };
     }
   } else {
     const file = dataFile();
     const list = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
     if (list.some(entry => entry.email === email)) {
-      return { statusCode: 200, body: JSON.stringify({ success: true, repeated: true }) };
+      return { statusCode: 200, body: JSON.stringify({ ok: true, success: true, repeated: true }) };
     }
     list.push({ email, confirmed, created_at: new Date().toISOString() });
     fs.writeFileSync(file, JSON.stringify(list.slice(-5000), null, 2));
@@ -70,6 +77,4 @@ exports.handler = async function(event) {
   return {
     statusCode: 200,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ success: true })
-  };
-};
+    body: JSON.stringify({ ok: true, success: true })
