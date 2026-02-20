@@ -45,22 +45,28 @@ exports.handler = async (event, context) => {
       .eq('id', data.id)
       .catch(err => console.error('Update count error:', err));
 
-    // Return stored HTML or regenerate
+    // Return stored HTML
     let htmlContent = data.metadata?.html_content;
 
     if (!htmlContent) {
-      // Regenerate if not stored
-      const { generateModernProductPage } = require('./_lib/products-auto');
-      htmlContent = generateModernProductPage({
-        asin: data.amazon_asin,
-        title: data.product_name,
-        image: data.product_image,
-        description: data.description,
-        price: data.price,
-        rating: data.metadata?.rating,
-        pageSlug: data.page_slug,
-        amazonUrl: data.amazon_url
-      }, data.affiliate_key);
+      // Fallback if HTML not stored
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${data.product_name}</title>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; max-width: 800px; margin: auto;">
+          <img src="${data.product_image}" style="max-width: 100%; margin-bottom: 20px;" alt="${data.product_name}">
+          <h1>${data.product_name}</h1>
+          <p style="font-size: 24px; font-weight: bold; color: #2ecc71;">${data.price || 'Preis nicht verfügbar'}</p>
+          <p>${data.description || ''}</p>
+          <p style="margin-top: 30px;"><a href="${data.amazon_url}" style="padding: 12px 24px; background: #FF9900; color: white; text-decoration: none; border-radius: 4px; display: inline-block;">Auf Amazon kaufen</a></p>
+        </body>
+        </html>
+      `;
     }
 
     return {

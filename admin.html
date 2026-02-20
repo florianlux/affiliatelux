@@ -64,14 +64,61 @@
     </section>
 
     <section class="admin-card full">
-      <h2>Letzte Email Signups</h2>
+      <div class="admin-head">
+        <h2>Letzte Email Signups</h2>
+        <div class="email-actions">
+          <select id="email-filter" class="email-filter">
+            <option value="">Alle</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="pending">Pending</option>
+          </select>
+          <button class="btn mini" id="email-export">📥 Export CSV</button>
+          <button class="btn mini danger" id="email-clear-all">🗑️ Alle löschen</button>
+        </div>
+      </div>
       <div class="table" id="email-table">
         <div class="table-head email-head">
           <span>Email</span>
           <span>Timestamp</span>
           <span>Status</span>
+          <span>Aktion</span>
         </div>
       </div>
+    </section>
+
+    <section class="admin-card full">
+      <div class="admin-head">
+        <h2>📧 Newsletter versenden</h2>
+        <span class="badge" id="newsletter-status">Ready</span>
+      </div>
+      <form id="newsletter-form" class="newsletter-form">
+        <div class="form-group">
+          <label>Von Name</label>
+          <input type="text" name="fromName" value="DropCharge" placeholder="z.B. DropCharge" />
+        </div>
+        <div class="form-group">
+          <label>Von Email</label>
+          <input type="email" name="fromEmail" value="noreply@dropcharge.io" placeholder="noreply@dropcharge.io" />
+        </div>
+        <div class="form-group">
+          <label>Betreff *</label>
+          <input type="text" name="subject" required placeholder="z.B. Neue Deals diese Woche!" />
+        </div>
+        <div class="form-group">
+          <label>Nachricht (HTML oder Text) *</label>
+          <textarea name="html" required rows="10" placeholder="<h1>Hallo!</h1><p>...</p>" style="font-family: monospace;"></textarea>
+        </div>
+        <div class="newsletter-info">
+          <p class="micro"><strong id="newsletter-count">0</strong> bestätigte E-Mails werden empfangen</p>
+        </div>
+        <button type="submit" class="btn primary" id="newsletter-submit">🚀 Newsletter versenden</button>
+        <div id="newsletter-progress" style="display: none; margin-top: 1rem;">
+          <p class="micro" id="newsletter-progress-text"></p>
+          <div class="progress-bar" style="background: var(--bg-input); border-radius: 4px; height: 6px; overflow: hidden;">
+            <div id="newsletter-progress-bar" style="background: var(--accent-success); height: 100%; width: 0%; transition: width 0.3s;"></div>
+          </div>
+        </div>
+      </form>
     </section>
 
     <section class="admin-card full">

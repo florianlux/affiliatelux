@@ -533,3 +533,139 @@ details summary:hover {
 details[open] summary {
   margin-bottom: 0.5rem;
 }
+/* Email Actions */
+.email-actions {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.email-filter {
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.email-filter:hover,
+.email-filter:focus {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: var(--border-light);
+}
+
+.btn.danger {
+  background: rgba(255, 158, 158, 0.15);
+  color: #ff9e9e;
+  border-color: rgba(255, 158, 158, 0.3);
+}
+
+.btn.danger:hover {
+  background: rgba(255, 158, 158, 0.25);
+  border-color: rgba(255, 158, 158, 0.5);
+}
+
+/* Email table row delete button */
+.email-row-delete {
+  background: transparent;
+  color: var(--accent-error);
+  border: none;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  transition: all var(--transition);
+  font-family: inherit;
+}
+
+.email-row-delete:hover {
+  background: rgba(255, 158, 158, 0.15);
+}
+
+/* Custom email table head */
+.email-head {
+  grid-template-columns: 150px 130px 100px 80px;
+}
+
+.table-row.email-row {
+  grid-template-columns: 150px 130px 100px 80px;
+}
+
+/* Newsletter Form */
+.newsletter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.form-group input,
+.form-group textarea {
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  transition: all var(--transition);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: var(--border-light);
+  outline: none;
+}
+
+.newsletter-info {
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 199, 106, 0.1);
+  border: 1px solid rgba(255, 199, 106, 0.2);
+}
+
+.newsletter-info p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.newsletter-info strong {
+  color: var(--accent-primary);
+}
+
+#newsletter-status {
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  background: rgba(124, 224, 164, 0.2);
+  color: var(--accent-success);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+#newsletter-status.sending {
+  background: rgba(255, 199, 106, 0.2);
+  color: var(--accent-primary);
+}
+
+#newsletter-status.error {
+  background: rgba(255, 158, 158, 0.2);
+  color: var(--accent-error);
+}

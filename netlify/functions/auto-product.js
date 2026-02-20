@@ -27,74 +27,56 @@ const extractProductInfo = (html, asin) => {
     rating: null
   };
 
+  if (!html || html.length < 100) {
+    console.warn('HTML too small or empty:', html?.length || 0);
+    return result;
+  }
+
   try {
-    // Method 1: OpenGraph tags
-    const getOGTag = (property) => {
-      const regex = new RegExp(`<meta property="og:${property}" content="([^"]*)"`, 'i');
-      const match = html.match(regex);
-      return match ? match[1] : null;
-    };
+    // Method 1: OpenGraph tags (most reliable)
+    const ogTitle = html.match(/<meta property="og:title" content="([^"]*)"/i);
+    const ogImage = html.match(/<meta property="og:image" content="([^"]*)"/i);
+    const ogDesc = html.match(/<meta property="og:description" content="([^"]*)"/i);
+    
+    result.title = ogTitle?.[1];
+    result.image = ogImage?.[1];
+    result.description = ogDesc?.[1];
 
-    result.title = getOGTag('title');
-    result.image = getOGTag('image');
-    result.description = getOGTag('description');
-
-    // Method 2: Meta tags fallback
-    const getMetaTag = (name) => {
-      const regex = new RegExp(`<meta name="${name}" content="([^"]*)"`, 'i');
-      const match = html.match(regex);
-      return match ? match[1] : null;
-    };
-
+    // Method 2: Meta tags (fallback)
     if (!result.title) {
-      result.title = getMetaTag('title');
+      const metaTitle = html.match(/<meta name="title" content="([^"]*)"/) || 
+                       html.match(/<title>([^<]*)<\/title>/i);
+      result.title = metaTitle?.[1];
     }
 
     if (!result.description) {
-      result.description = getMetaTag('description');
+      const metaDesc = html.match(/<meta name="description" content="([^"]*)"/) ||
+                      html.match(/<meta property="description" content="([^"]*)"/);
+      result.description = metaDesc?.[1];
     }
 
-    // Method 3: Find title in h1 tag
-    if (!result.title) {
-      const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-      if (h1Match) result.title = decodeHTMLEntities(h1Match[1]).trim();
-    }
-
-    // Method 4: Structured data (JSON-LD) with better parsing
+    // Method 3: JSON-LD structured data
     try {
       const jsonLdMatches = html.match(/<script type="application\/ld\+json"[^>]*>([^<]+)<\/script>/gi);
       if (jsonLdMatches) {
-        for (const match of jsonLdMatches) {
+        for (const m of jsonLdMatches) {
           try {
-            const jsonStr = match.replace(/<script[^>]*>/, '').replace(/<\/script>/, '');
-            const jsonLd = JSON.parse(jsonStr);
+            const json = JSON.parse(m.replace(/<[^>]*>/g, ''));
+            if (json.name) result.title = result.title || json.name;
+            if (json.description) result.description = result.description || json.description;
             
-            if (jsonLd.name) result.title = result.title || jsonLd.name;
-            if (jsonLd.description) result.description = result.description || jsonLd.description;
-            
-            // Handle various image formats
-            if (jsonLd.image) {
-              if (Array.isArray(jsonLd.image)) {
-                result.image = result.image || jsonLd.image[0];
-              } else if (typeof jsonLd.image === 'object') {
-                result.image = result.image || jsonLd.image.url;
-              } else {
-                result.image = result.image || jsonLd.image;
+            if (json.image) {
+              if (Array.isArray(json.image)) {
+                result.image = result.image || json.image[0];
+              } else if (typeof json.image === 'string') {
+                result.image = result.image || json.image;
               }
             }
             
-            // Extract price
-            if (jsonLd.offers) {
-              const offers = Array.isArray(jsonLd.offers) ? jsonLd.offers[0] : jsonLd.offers;
-              if (offers.price) result.price = offers.price;
-            }
-            
-            // Extract rating
-            if (jsonLd.aggregateRating?.ratingValue) {
-              result.rating = parseFloat(jsonLd.aggregateRating.ratingValue);
-            }
+            if (json.offers?.price) result.price = result.price || json.offers.price;
+            if (json.aggregateRating?.ratingValue) result.rating = result.rating || parseFloat(json.aggregateRating.ratingValue);
           } catch (e) {
-            console.warn('JSON-LD parse error (item):', e.message);
+            // Continue to next JSON-LD block
           }
         }
       }
@@ -102,83 +84,69 @@ const extractProductInfo = (html, asin) => {
       console.warn('JSON-LD parse error:', e.message);
     }
 
-    // Method 5: Image extraction from multiple sources
+    // Method 4: Extract first large image
     if (!result.image) {
-      // Try to find image in img tags
-      const imgMatches = [
-        html.match(/<img[^>]*data-a-dynamic-image='([^']*)'[^>]*>/i),
-        html.match(/<img[^>]*src='([^']*[a-zA-Z0-9]+\.(jpg|png|jpeg|webp))'[^>]*>/i),
-        html.match(/<img[^>]*class='[^']*s-image[^']*'[^>]*src='([^']*)'[^>]*>/i)
-      ];
-      
-      for (const match of imgMatches) {
-        if (match && match[1]) {
-          try {
-            const imgUrl = match[1];
-            if (imgUrl.includes('.jpg') || imgUrl.includes('.png') || imgUrl.includes('.webp')) {
-              result.image = imgUrl;
-              break;
-            }
-          } catch (e) {
-            continue;
-          }
-        }
+      const imgMatch = html.match(/<img[^>]*src="([^"]*(?:\.jpg|\.png|\.webp)[^"]*)"/i) ||
+                      html.match(/<img[^>]*data-src="([^"]*(?:\.jpg|\.png|\.webp)[^"]*)"/i);
+      if (imgMatch?.[1] && imgMatch[1].length > 10) {
+        result.image = imgMatch[1];
       }
     }
 
-    // Method 6: Price extraction from various patterns
+    // Method 5: Price extraction
     if (!result.price) {
       const pricePatterns = [
-        /data-a-color="price"[^>]*>€?\s*(\d+[.,]\d{2})/i,
-        /class="[^"]*price[^"]*"[^>]*>€?\s*(\d+[.,]\d{2})/i,
-        /["']?price["']?\s*:\s*["']?(\d+[.,]\d{2})["']?/i,
+        /["']price["']\s*:\s*["']?(\d+[.,]\d{2})/i,
+        /€\s*(\d+[.,]\d{2})/,
         /EUR\s*(\d+[.,]\d{2})/i,
-        /€\s*(\d+[.,]\d{2})/i,
         /(\d+[.,]\d{2})\s*EUR/i
       ];
-      for (const pattern of pricePatterns) {
-        const match = html.match(pattern);
-        if (match) {
-          result.price = match[1].replace(',', '.');
+      for (const p of pricePatterns) {
+        const m = html.match(p);
+        if (m?.[1]) {
+          result.price = m[1].replace(',', '.');
           break;
         }
       }
     }
 
-    // Method 7: Rating extraction
+    // Method 6: Rating extraction
     if (!result.rating) {
       const ratingPatterns = [
-        /rating['"]\s*:\s*["']?([0-9.]+)/i,
-        /ratingValue['"]\s*:\s*["']?([0-9.]+)/i,
-        /aria-label="([0-9.]+) von 5 Sternen"/i,
-        /([0-9.]+) out of 5/i
+        /ratingValue['"]\s*:\s*['""]?([0-9.]+)/i,
+        /rating['"]\s*:\s*['""]?([0-9.]+)/i,
+        /([0-9.]+)['"]\s*von\s*['""]?5/i
       ];
-      for (const pattern of ratingPatterns) {
-        const match = html.match(pattern);
-        if (match) {
-          result.rating = parseFloat(match[1]);
+      for (const p of ratingPatterns) {
+        const m = html.match(p);
+        if (m?.[1]) {
+          result.rating = parseFloat(m[1]);
           break;
         }
       }
     }
 
-    // Method 8: Description cleanup from text-heavy content
-    if (!result.description && html.length > 1000) {
-      // Extract first meaningful paragraph
-      const textMatch = html.match(/<p[^>]*>([^<]{20,200})<\/p>/i);
-      if (textMatch) {
-        result.description = decodeHTMLEntities(textMatch[1]).substring(0, 160).trim();
-      }
-    }
-
-    // Final cleanup
+    // Method 7: Cleanup extracted data
     if (result.title) {
-      result.title = decodeHTMLEntities(result.title).trim().substring(0, 200);
+      result.title = decodeHTMLEntities(result.title)
+        .replace(/<[^>]*>/g, '')
+        .trim()
+        .substring(0, 200);
     }
 
     if (result.description) {
-      result.description = decodeHTMLEntities(result.description).substring(0, 200).trim();
+      result.description = decodeHTMLEntities(result.description)
+        .replace(/<[^>]*>/g, '')
+        .trim()
+        .substring(0, 300);
     }
+
+    console.log('✓ Extract result:', {
+      title: result.title ? `✓ ${result.title.substring(0, 40)}...` : '✗',
+      image: result.image ? '✓' : '✗',
+      price: result.price ? `✓ ${result.price}` : '✗',
+      rating: result.rating ? `✓ ${result.rating}` : '✗'
+    });
 
   } catch (err) {
     console.error('Extract error:', err.message);
@@ -657,107 +625,111 @@ exports.handler = async (event, context) => {
         return { statusCode: 401, headers, body: JSON.stringify({ error: 'Unauthorized' }) };
       }
 
-      const { amazonUrl, affiliateKey, customTitle, customImage, customDescription } = JSON.parse(event.body);
+      let body = {};
+      try {
+        body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+      } catch (e) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON' }) };
+      }
 
-      if (!amazonUrl || !affiliateKey) {
+      const { amazonUrl, affiliateKey, customTitle, customImage, customDescription } = body;
+
+      if (!amazonUrl?.trim() || !affiliateKey?.trim()) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Amazon URL and affiliate key required' })
+          body: JSON.stringify({ error: 'Amazon URL und Affiliate Key erforderlich' })
         };
       }
 
-      const asin = extractASIN(amazonUrl);
+      const asin = extractASIN(amazonUrl.trim());
       if (!asin) {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Konnte ASIN nicht extrahieren. Bitte überprüfe deine Amazon-URL. Sie sollte /dp/ASIN enthalten oder direkt eine ASIN sein.' })
+          body: JSON.stringify({ error: 'Konnte ASIN nicht extrahieren. Bitte gib einen Amazon Link oder ASIN ein (z.B. B07FZG4C8F)' })
         };
       }
 
-      console.log('Extracted ASIN:', asin);
-
-      // Fetch product info with better timeout and error handling
+      console.log('✓ Extracted ASIN:', asin);
       let productInfo = null;
       
       try {
-        let fetchUrl = amazonUrl.split('?')[0].trim(); // Remove query params
-        console.log('Step 1: Original URL:', fetchUrl);
+        let fetchUrl = amazonUrl.trim().split('?')[0];
+        console.log('→ Attempting to fetch:', fetchUrl);
         
-        // Handle shortened Amazon URLs by resolving them
+        // Try to resolve shortened URLs
         if (fetchUrl.includes('amzn.to') || fetchUrl.includes('amzn.eu')) {
-          console.log('Step 2: Detected shortened URL, attempting to resolve...');
           try {
-            const resolveResponse = await fetch(fetchUrl, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-              },
-              redirect: 'follow'
+            const resolved = await fetch(fetchUrl, {
+              headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+              redirect: 'follow',
+              timeout: 10000
             });
-            
-            if (resolveResponse.ok) {
-              const resolvedUrl = resolveResponse.url;
-              console.log('Step 3: Resolved to:', resolvedUrl);
-              fetchUrl = resolvedUrl;
-            }
-          } catch (resolveErr) {
-            console.warn('Step 3: Resolution failed:', resolveErr.message);
+            if (resolved.ok) fetchUrl = resolved.url;
+          } catch (e) {
+            console.warn('Could not resolve shortened URL:', e.message);
           }
         }
 
-        // Extract ASIN to build clean URL if needed
-        const asinFromUrl = extractASIN(fetchUrl);
-        if (asinFromUrl) {
-          // Build clean Amazon URL
-          fetchUrl = `https://www.amazon.de/dp/${asinFromUrl}`;
-          console.log('Step 4: Using clean Amazon URL:', fetchUrl);
+        // Use clean Amazon URL
+        if (asin) {
+          fetchUrl = `https://www.amazon.de/dp/${asin}`;
         }
+
+        console.log('→ Final fetch URL:', fetchUrl);
         
-        console.log('Step 5: Fetching page...');
         const response = await fetch(fetchUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1'
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'de-DE,de;q=0.9',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive'
           },
           redirect: 'follow',
-          timeout: 15000
+          timeout: 12000
         });
 
-        console.log('Step 6: Response status:', response.status, response.statusText);
-
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status } - ${response.statusText}`);
+          throw new Error(`HTTP ${response.status}`);
         }
 
         const html = await response.text();
-        console.log('Step 7: HTML received, length:', html.length);
+        console.log('✓ Got HTML, length:', html.length);
 
-        // Extract product info using multiple methods
         productInfo = extractProductInfo(html, asin);
-        console.log('Step 8: Extracted info:', productInfo);
+        console.log('✓ Extracted info:', {
+          title: productInfo.title ? '✓' : '✗',
+          image: productInfo.image ? '✓' : '✗',
+          price: productInfo.price ? '✓' : '✗'
+        });
 
       } catch (err) {
-        console.error('⚠️ Scraping failed:', err.message);
-        // Use fallback with just ASIN
+        console.warn('⚠ Scraping error:', err.message);
         productInfo = {
           title: customTitle || `Amazon Produkt ${asin}`,
           image: customImage || null,
-          description: customDescription || 'Hochwertiges Produkt auf Amazon - entdecke es jetzt!'
+          description: customDescription || 'Premium-Produkt auf Amazon verfügbar'
         };
-        console.log('Step 9: Using fallback data:', productInfo);
+        console.log('→ Using fallback data');
       }
 
+      // Ensure all fields exist
+      productInfo = {
+        title: productInfo?.title || customTitle || `Amazon ASIN: ${asin}`,
+        image: productInfo?.image || customImage || null,
+        description: productInfo?.description || customDescription || 'Entdecke dieses Produkt auf Amazon',
+        price: productInfo?.price || null,
+        rating: productInfo?.rating || null
+      };
+
       const pageSlug = `${asin.toLowerCase()}-${Date.now()}`;
+      const cleanUrl = amazonUrl.split('?')[0].split('#')[0];
 
       const product = {
         asin,
-        amazonUrl: amazonUrl.split('?')[0],
+        amazonUrl: cleanUrl,
         ...productInfo,
         pageSlug,
         affiliate_key: affiliateKey
@@ -766,12 +738,14 @@ exports.handler = async (event, context) => {
       // Generate HTML
       const htmlContent = generateModernProductPage(product, affiliateKey);
 
+      console.log('→ Saving to Supabase...');
+
       // Save to Supabase
       const { data, error } = await supabase
         .from('auto_products')
         .insert([{
           amazon_asin: asin,
-          amazon_url: amazonUrl.split('?')[0],
+          amazon_url: cleanUrl,
           product_name: productInfo.title,
           product_image: productInfo.image,
           description: productInfo.description,
@@ -785,13 +759,15 @@ exports.handler = async (event, context) => {
         .select();
 
       if (error) {
-        console.error('DB Error:', error);
+        console.error('✗ DB Error:', error);
         return {
           statusCode: 500,
           headers,
           body: JSON.stringify({ error: 'Fehler beim Speichern: ' + error.message })
         };
       }
+
+      console.log('✓ Product saved successfully');
 
       return {
         statusCode: 201,
@@ -800,7 +776,7 @@ exports.handler = async (event, context) => {
           success: true,
           product: data[0],
           pageUrl: `/${pageSlug}`,
-          shareUrl: `${process.env.URL}/${pageSlug}` || `/${pageSlug}`,
+          shareUrl: `${process.env.URL || 'https://affiliatelux.netlify.app'}/${pageSlug}`,
           htmlDownload: htmlContent
         })
       };
@@ -815,7 +791,14 @@ exports.handler = async (event, context) => {
         .order('created_at', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
+      if (error) {
+        console.error('DB Error:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ error: error.message })
+        };
+      }
 
       return {
         statusCode: 200,
@@ -827,11 +810,11 @@ exports.handler = async (event, context) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
 
   } catch (err) {
-    console.error('Error:', err);
+    console.error('✗ Fatal error:', err.message);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: err.message || 'Unbekannter Fehler' })
     };
   }
 };

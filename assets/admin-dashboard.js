@@ -107,6 +107,9 @@ class Dashboard {
       emailCountEl: document.getElementById('email-count'),
       emailConvEl: document.getElementById('email-conv'),
       emailTable: document.getElementById('email-table'),
+      emailFilter: document.getElementById('email-filter'),
+      emailExport: document.getElementById('email-export'),
+      emailClearAll: document.getElementById('email-clear-all'),
       healthStatusEl: document.querySelector('[data-health-status]'),
       healthErrorEl: document.querySelector('[data-health-error]'),
       healthTable: document.getElementById('health-clicks'),
@@ -115,8 +118,17 @@ class Dashboard {
       spotlightForm: document.getElementById('spotlight-form'),
       spotlightFetchBtn: document.getElementById('spotlight-fetch'),
       clearTokenBtn: document.getElementById('admin-clear-token'),
-      spotlightPreview: document.getElementById('spotlight-preview')
+      spotlightPreview: document.getElementById('spotlight-preview'),
+      newsletterForm: document.getElementById('newsletter-form'),
+      newsletterStatus: document.getElementById('newsletter-status'),
+      newsletterCount: document.getElementById('newsletter-count'),
+      newsletterProgress: document.getElementById('newsletter-progress'),
+      newsletterProgressText: document.getElementById('newsletter-progress-text'),
+      newsletterProgressBar: document.getElementById('newsletter-progress-bar'),
+      newsletterSubmit: document.getElementById('newsletter-submit')
     };
+    
+    this.allEmails = [];
   }
 
   attachEventListeners() {
@@ -128,6 +140,14 @@ class Dashboard {
     this.elements.refreshBtn?.addEventListener('click', () => this.refresh());
     this.elements.spotlightFetchBtn?.addEventListener('click', () => this.loadSpotlight());
     this.elements.spotlightForm?.addEventListener('submit', (e) => this.handleSpotlightSubmit(e));
+
+    // Email actions
+    this.elements.emailFilter?.addEventListener('change', (e) => this.filterEmails(e.target.value));
+    this.elements.emailExport?.addEventListener('click', () => this.exportEmails());
+    this.elements.emailClearAll?.addEventListener('click', () => this.deleteAllEmails());
+
+    // Newsletter
+    this.elements.newsletterForm?.addEventListener('submit', (e) => this.handleNewsletterSubmit(e));
   }
 
   startLiveUpdates() {
@@ -165,15 +185,23 @@ class Dashboard {
 
     // Update email table
     if (this.elements.emailTable) {
+      this.allEmails = emails;
       this.elements.emailTable.querySelectorAll('.table-row').forEach(row => row.remove());
       emails.forEach(email => {
-        const row = this.createTableRow(
+        const row = this.createEmailRow(
+          email.id,
           email.email,
           new Date(email.created_at).toLocaleString(),
           email.confirmed ? '✓ Confirmed' : 'Pending'
         );
         this.elements.emailTable.appendChild(row);
       });
+    }
+
+    // Update newsletter count
+    if (this.elements.newsletterCount) {
+      const confirmedCount = emails.filter(e => e.confirmed).length;
+      this.elements.newsletterCount.textContent = confirmedCount;
     }
 
     // Update amount list
@@ -222,6 +250,29 @@ class Dashboard {
     const row = document.createElement('div');
     row.className = 'table-row';
     row.innerHTML = cells.map(cell => `<span>${cell}</span>`).join('');
+    return row;
+  }
+
+  createEmailRow(id, email, timestamp, status) {
+    const row = document.createElement('div');
+    row.className = 'table-row email-row';
+    row.dataset.emailId = id;
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'email-row-delete';
+    deleteBtn.textContent = '🗑️ Löschen';
+    deleteBtn.addEventListener('click', () => this.deleteEmail(id, email));
+    
+    row.innerHTML = `
+      <span>${email}</span>
+      <span>${timestamp}</span>
+      <span>${status}</span>
+      <span id="action-${id}"></span>
+    `;
+    
+    const actionCell = row.querySelector(`#action-${id}`);
+    actionCell.appendChild(deleteBtn);
+    
     return row;
   }
 
@@ -298,6 +349,189 @@ class Dashboard {
       this.loadSpotlight();
     } else {
       this.toast.error('Spotlight konnte nicht gespeichert werden');
+    }
+  }
+
+  filterEmails(status) {
+    const emailRows = this.elements.emailTable.querySelectorAll('.email-row');
+    
+    emailRows.forEach(row => {
+      if (!status) {
+        row.style.display = 'grid';
+      } else {
+        const statusCell = row.querySelector('span:nth-child(3)');
+        const isConfirmed = statusCell.textContent.includes('✓');
+        const matches = (status === 'confirmed' && isConfirmed) || (status === 'pending' && !isConfirmed);
+        row.style.display = matches ? 'grid' : 'none';
+      }
+    });
+  }
+
+  exportEmails() {
+    if (!this.allEmails || this.allEmails.length === 0) {
+      this.toast.error('Keine E-Mails zum Exportieren');
+      return;
+    }
+
+    // Filter berücksichtigen
+    const filterValue = this.elements.emailFilter?.value || '';
+    let emailsToExport = this.allEmails;
+    
+    if (filterValue) {
+      emailsToExport = emailsToExport.filter(email => {
+        if (filterValue === 'confirmed') return email.confirmed;
+        if (filterValue === 'pending') return !email.confirmed;
+        return true;
+      });
+    }
+
+    // CSV-Header
+    let csv = 'Email,Timestamp,Status\n';
+    
+    // CSV-Zeilen
+    emailsToExport.forEach(email => {
+      const date = new Date(email.created_at).toLocaleString();
+      const status = email.confirmed ? 'Confirmed' : 'Pending';
+      csv += `"${email.email}","${date}","${status}"\n`;
+    });
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `newsletters-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    this.toast.success(`✓ ${emailsToExport.length} E-Mails exportiert`);
+  }
+
+  async deleteEmail(emailId, email) {
+    if (!confirm(`Möchtest du ${email} wirklich löschen?`)) {
+      return;
+    }
+
+    const response = await this.api.fetch('/delete-email', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emailId })
+    });
+
+    if (response?.success) {
+      this.toast.success(`✓ E-Mail gelöscht`);
+      const row = document.querySelector(`[data-email-id="${emailId}"]`);
+      if (row) row.remove();
+      this.allEmails = this.allEmails.filter(e => e.id !== emailId);
+    } else {
+      this.toast.error('E-Mail konnte nicht gelöscht werden');
+    }
+  }
+
+  async deleteAllEmails() {
+    if (!this.allEmails || this.allEmails.length === 0) {
+      this.toast.error('Keine E-Mails zum Löschen');
+      return;
+    }
+
+    const filterValue = this.elements.emailFilter?.value || '';
+    let emailsToDelete = this.allEmails;
+    
+    if (filterValue) {
+      emailsToDelete = emailsToDelete.filter(email => {
+        if (filterValue === 'confirmed') return email.confirmed;
+        if (filterValue === 'pending') return !email.confirmed;
+        return true;
+      });
+    }
+
+    if (!confirm(`Möchtest du ${emailsToDelete.length} E-Mail(s) wirklich löschen? Dies kann nicht rückgängig gemacht werden!`)) {
+      return;
+    }
+
+    let successCount = 0;
+    for (const email of emailsToDelete) {
+      const response = await this.api.fetch('/delete-email', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emailId: email.id })
+      });
+
+      if (response?.success) {
+        successCount++;
+        const row = document.querySelector(`[data-email-id="${email.id}"]`);
+        if (row) row.remove();
+      }
+    }
+
+    this.allEmails = this.allEmails.filter(e => !emailsToDelete.find(d => d.id === e.id));
+    this.toast.success(`✓ ${successCount}/${emailsToDelete.length} E-Mails gelöscht`);
+  }
+
+  async handleNewsletterSubmit(event) {
+    event.preventDefault();
+
+    const confirmedCount = this.allEmails.filter(e => e.confirmed).length;
+    if (confirmedCount === 0) {
+      this.toast.error('Keine bestätigten E-Mails vorhanden');
+      return;
+    }
+
+    const formData = new FormData(this.elements.newsletterForm);
+    const payload = Object.fromEntries(formData.entries());
+
+    if (!confirm(`Newsletter an ${confirmedCount} E-Mail(s) versenden? Dies kann nicht rückgängig gemacht werden!`)) {
+      return;
+    }
+
+    // UI Update
+    this.elements.newsletterStatus.textContent = 'Versenden...';
+    this.elements.newsletterStatus.classList.add('sending');
+    this.elements.newsletterSubmit.disabled = true;
+    this.elements.newsletterProgress.style.display = 'block';
+    this.elements.newsletterProgressText.textContent = 'Verarbeite...';
+    this.elements.newsletterProgressBar.style.width = '0%';
+
+    try {
+      const response = await this.api.fetch('/send-newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response?.success) {
+        const { sent = 0, failed = 0, total = 0 } = response;
+        this.elements.newsletterProgressBar.style.width = '100%';
+        this.elements.newsletterProgressText.textContent = `✓ ${sent}/${total} erfolgreich versendet`;
+        
+        if (failed > 0) {
+          this.toast.error(`⚠️ ${failed} E-Mails konnten nicht versendet werden`);
+        } else {
+          this.toast.success(`✓ Newsletter an ${sent} E-Mail(s) versendet!`);
+        }
+
+        this.elements.newsletterForm.reset();
+        
+        setTimeout(() => {
+          this.elements.newsletterProgress.style.display = 'none';
+          this.elements.newsletterStatus.textContent = 'Versendet';
+          this.elements.newsletterStatus.classList.remove('sending');
+          
+          setTimeout(() => {
+            this.elements.newsletterStatus.textContent = 'Ready';
+            this.elements.newsletterStatus.classList.remove('sending');
+          }, 3000);
+        }, 1500);
+      } else {
+        throw new Error(response?.error || 'Unknown error');
+      }
+    } catch (err) {
+      console.error('Newsletter error:', err);
+      this.elements.newsletterStatus.textContent = 'Fehler';
+      this.elements.newsletterStatus.classList.add('error');
+      this.elements.newsletterProgressText.textContent = `Fehler: ${err.message}`;
+      this.toast.error('Newsletter konnte nicht versendet werden');
+    } finally {
+      this.elements.newsletterSubmit.disabled = false;
     }
   }
 }
