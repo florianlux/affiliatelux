@@ -5,7 +5,10 @@ function isValidEmail(email) {
 }
 
 exports.handler = async function(event) {
+  console.log('[newsletter_signup] Received request:', { method: event.httpMethod, body: event.body?.substring(0, 100) });
+  
   if (event.httpMethod !== 'POST') {
+    console.log('[newsletter_signup] Not a POST request');
     return {
       statusCode: 405,
       headers: { 'Content-Type': 'application/json' },
@@ -42,7 +45,7 @@ exports.handler = async function(event) {
   }
 
   if (!hasSupabase || !supabase) {
-    console.log('newsletter_signup: Supabase not configured');
+    console.log('newsletter_signup: Supabase not configured', { hasSupabase, supabaseClient: !!supabase });
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -51,6 +54,7 @@ exports.handler = async function(event) {
   }
 
   try {
+    console.log('[newsletter_signup] Querying for existing subscriber:', email);
     // Check if subscriber exists
     const { data: existing, error: selectErr } = await supabase
       .from('newsletter_subscribers')
@@ -59,7 +63,7 @@ exports.handler = async function(event) {
       .maybeSingle();
 
     if (selectErr && selectErr.code !== 'PGRST116') {
-      console.log('newsletter_signup: select error', selectErr.message);
+      console.log('newsletter_signup: select error', selectErr.message, selectErr.code);
       return {
         statusCode: 500,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -138,7 +142,7 @@ exports.handler = async function(event) {
       body: JSON.stringify({ ok: true, message: 'subscribed' })
     };
   } catch (err) {
-    console.log('newsletter_signup: error', err.message);
+    console.error('[newsletter_signup] Unexpected error:', err.message, err.stack);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
