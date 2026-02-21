@@ -5,6 +5,7 @@ function isValidEmail(email) {
 }
 
 exports.handler = async function(event) {
+  SYNTAX_ERROR_12345_HERE  // This will crash
   console.log('[subscribe] Processing request:', { method: event.httpMethod, hasBody: !!event.body });
   
   // CORS
