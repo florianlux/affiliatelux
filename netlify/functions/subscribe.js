@@ -140,14 +140,14 @@ exports.handler = async function(event) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      body: JSON.stringify({ ok: true, message: 'subscribed' })
+      body: JSON.stringify({ ok: true, message: 'subscribed', email })
     };
   } catch (err) {
-    console.error('[subscribe] Unexpected error:', err.message, err.stack);
+    console.error('[subscribe] Unexpected error:', err);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      body: JSON.stringify({ ok: false, error: 'unexpected_error', details: err.message })
+      body: JSON.stringify({ ok: false, error: 'unexpected_error', message: err.message, stack: err.stack })
     };
   }
 };

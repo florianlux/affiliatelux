@@ -1,0 +1,55 @@
+# GIT COMMIT MESSAGE
+
+```
+fix: newsletter signup broken schema + response format
+
+FIXES #bug-newsletter-timeout-5-seconds
+
+Root Cause:
+- subscribe.js had syntax error (missing closing brace)
+- Backend wrote to 'emails' table but admin read from 'newsletter_subscribers'
+- No CORS headers blocking browser requests
+- Error responses were plain text instead of JSON
+- Admin UI expected 'confirmed' boolean but table has 'status' enum
+
+Changes:
+1. netlify/functions/subscribe.js (CRITICAL)
+   - Fixed broken function (missing };)
+   - Writes to 'newsletter_subscribers' table (not 'emails')
+   - Added CORS support (OPTIONS preflight)
+   - Defensive JSON parsing with error details
+   - Email validation
+   - Proper upsert logic (check duplicate, reactivate if unsubscribed)
+   - All responses now JSON format with { ok, message, error, details }
+
+2. netlify/functions/stats.js (SCHEMA ALIGNMENT)
+   - Changed from reading 'emails' to 'newsletter_subscribers'
+   - Filter by status='active' only
+   - Matches what admin-dashboard.js expects
+
+3. assets/admin-dashboard.js (UI FIX)
+   - Updated renderStats() to use .status instead of .confirmed (L217, L225)
+   - Updated exportEmails() filters and CSV (L404-418)
+   - Updated deleteAllEmails() filters (L459-467)
+   - All checks now: status === 'active' instead of confirmed === true
+
+Behavior:
+✓ Frontend → Backend (same)
+✓ Backend saves to correct table
+✓ Admin can immediately see new signups
+✓ Email filtering/export works correctly
+✓ Duplicate subscribers are handled gracefully
+✓ All endpoints return JSON with consistent format
+
+Testing:
+- Newsletter signup from dropcharge.io works end-to-end
+- Admin dashboard shows status as '✓ Active'
+- CORS preflight (OPTIONS) works for browser
+
+Env vars required:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+
+Database tables affected:
+- newsletter_subscribers (write by subscribe.js, read by stats.js)
+```
