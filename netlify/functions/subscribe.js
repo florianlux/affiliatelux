@@ -140,7 +140,7 @@ exports.handler = async function(event) {
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      body: JSON.stringify({ ok: true, message: 'subscribed', email })
+      body: JSON.stringify({ ok: true, message: 'subscribed_v2', email, timestamp: new Date().toISOString() })
     };
   } catch (err) {
     console.error('[subscribe] Unexpected error:', err);
