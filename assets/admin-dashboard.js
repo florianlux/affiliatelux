@@ -214,7 +214,7 @@ class Dashboard {
           email.id,
           email.email,
           new Date(email.created_at).toLocaleString(),
-          email.confirmed ? '✓ Confirmed' : 'Pending'
+          email.status === 'active' ? '✓ Active' : (email.status || 'Pending')
         );
         this.elements.emailTable.appendChild(row);
       });
@@ -222,7 +222,7 @@ class Dashboard {
 
     // Update newsletter count
     if (this.elements.newsletterCount) {
-      const confirmedCount = emails.filter(e => e.confirmed).length;
+      const confirmedCount = emails.filter(e => e.status === 'active').length;
       this.elements.newsletterCount.textContent = confirmedCount;
     }
 
@@ -401,8 +401,8 @@ class Dashboard {
     
     if (filterValue) {
       emailsToExport = emailsToExport.filter(email => {
-        if (filterValue === 'confirmed') return email.confirmed;
-        if (filterValue === 'pending') return !email.confirmed;
+        if (filterValue === 'active') return email.status === 'active';
+        if (filterValue === 'unsubscribed') return email.status === 'unsubscribed';
         return true;
       });
     }
@@ -413,7 +413,7 @@ class Dashboard {
     // CSV-Zeilen
     emailsToExport.forEach(email => {
       const date = new Date(email.created_at).toLocaleString();
-      const status = email.confirmed ? 'Confirmed' : 'Pending';
+      const status = email.status === 'active' ? 'Active' : (email.status || 'Pending');
       csv += `"${email.email}","${date}","${status}"\n`;
     });
 
@@ -460,8 +460,8 @@ class Dashboard {
     
     if (filterValue) {
       emailsToDelete = emailsToDelete.filter(email => {
-        if (filterValue === 'confirmed') return email.confirmed;
-        if (filterValue === 'pending') return !email.confirmed;
+        if (filterValue === 'active') return email.status === 'active';
+        if (filterValue === 'unsubscribed') return email.status === 'unsubscribed';
         return true;
       });
     }

@@ -23,15 +23,17 @@ exports.handler = async function(event) {
     if (countErr) throw countErr;
 
     const { data: emailRows = [], error: emailErr } = await supabase
-      .from('emails')
-      .select('id,email,confirmed,created_at')
+      .from('newsletter_subscribers')
+      .select('id,email,status,created_at')
+      .eq('status', 'active')
       .order('created_at', { ascending: false })
       .limit(50);
     if (emailErr) throw emailErr;
 
     const { count: totalEmails = 0, error: emailCountErr } = await supabase
-      .from('emails')
-      .select('id', { count: 'exact', head: true });
+      .from('newsletter_subscribers')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active');
     if (emailCountErr) throw emailCountErr;
 
     const totals = {

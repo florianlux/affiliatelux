@@ -95,7 +95,7 @@ function render(data) {
       row.innerHTML = `
         <span>${entry.email}</span>
         <span>${new Date(entry.created_at).toLocaleString()}</span>
-        <span>${entry.confirmed ? 'Confirmed' : 'Pending'}</span>
+        <span>${entry.status === 'active' ? '✓ Active' : entry.status || 'Pending'}</span>
       `;
       emailTable.appendChild(row);
     });
